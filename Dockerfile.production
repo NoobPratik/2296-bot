@@ -1,0 +1,9 @@
+FROM python:3.11-alpine
+
+RUN apk add --update --no-cache git wget && git clone https://github.com/NoobPratik/2296-bot.git
+
+WORKDIR /2296-bot
+RUN pip install -r requirements.txt
+
+EXPOSE 2333
+CMD ["python", "-m", "bot.launcher"]

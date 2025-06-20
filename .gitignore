@@ -12,7 +12,4 @@ bot/utils/application.yml
 
 /.idea
 
-Dockerfile.local
-Dockerfile.production
-
 logs
