@@ -16,3 +16,4 @@ click
 dotenv
 pomice>=2.9.2
 cryptography
+aiomysql
