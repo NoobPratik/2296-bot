@@ -1,0 +1,18 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+
+# Environments
+.env
+
+bot/cogs/archived
+bot/utils/application.yml
+
+/.idea
+
+Dockerfile.local
+Dockerfile.production
+
+logs
