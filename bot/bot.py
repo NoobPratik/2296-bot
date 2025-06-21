@@ -28,7 +28,8 @@ class MyBot(commands.Bot):
             'games',
             'valorant',
             'miscellaneous',
-            'help'
+            'help',
+            'errors'
         ]
 
         self.pomice = pomice.NodePool()
@@ -46,13 +47,21 @@ class MyBot(commands.Bot):
         
         logging.info("Setup Complete.")
 
+    @discord.utils.cached_property
+    def webhook(self):
+        wh_id = os.getenv("DISCORD_ERRORS_WEBHOOK_ID")
+        wh_token = self.cp.get("webhook", "webhook-token")
+        return discord.Webhook.partial(
+            id=wh_id, token=wh_token, session=self.session
+        )
+
     async def start_nodes(self):
-        host = os.environ["lavalink_host"]
-        port = int(os.environ["lavalink_port"])
-        password = os.environ["lavalink_password"]
-        identifier = os.environ.get("lavalink_identifier", "MAIN")
-        spotify_client_id = os.environ.get("spotify_client_id", None)
-        spotify_client_secret = os.environ.get("spotify_client_secret", None)
+        host = os.environ["LAVALINK_HOST"]
+        port = int(os.environ["LAVALINK_PORT"])
+        password = os.environ["LAVALINK_PASSWORD"]
+        identifier = os.environ.get("LAVALINK_IDENTIFIER", "MAIN")
+        spotify_client_id = os.environ.get("SPOTIFY_CLIENT_ID", None)
+        spotify_client_secret = os.environ.get("SPOTIFY_CLIENT_SECRET", None)
 
         try:
             await self.pomice.create_node(
