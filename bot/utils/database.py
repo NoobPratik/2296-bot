@@ -41,10 +41,10 @@ class Database(object):
     @staticmethod
     async def mysql_create_pool():
         host = os.getenv("MYSQL_HOST", "localhost")
-        user = os.getenv("MYSQL_USER")
-        password = os.getenv("MYSQL_PASSWORD")
-        db = os.getenv("MYSQL_DATABASE", "db")
-        port = int(os.getenv("MYSQL_PORT"))
+        user = os.getenv("MYSQL_USER", "root")
+        password = os.getenv("MYSQL_PASSWORD", os.getenv("MYSQL_ROOT_PASSWORD"))
+        db = os.getenv("MYSQL_DATABASE", "main")
+        port = int(os.getenv("MYSQL_PORT", 3306))
 
         return await aiomysql.create_pool(
             host=host,

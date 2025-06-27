@@ -112,18 +112,16 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
         msg = await channel.fetch_message(guild['message_id'])
         self.last_songs.append(track.identifier)
         next = None
-
         try:
             next = player.queue.get()
 
         except pomice.exceptions.QueueEmpty:
 
             if player.autoplay:
-                recommendations = await player.get_recommendations(track)
-                next = recommendations[0]
-            
+                recommendations = await player.get_recommendations(track=track)
+                next = recommendations[0] if recommendations else None
+        
         if next:
-            await update_queue(bot=self.bot, db=self.db, player=player)
             return await player.play(next)
         else:
             await msg.edit(embed=default_embed(self.bot)[0], view=self.view)
@@ -198,8 +196,10 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
             embed, embed2 = default_embed(self.bot)
             disabled_buttons(self.view.children)
 
-            await message.edit(embed=embed, view=self.view)
-            await queue_message.edit(embed=embed2)
+            if message.embeds and message.embeds[0].description != embed.description:
+                await message.edit(embed=embed, view=self.view)
+            if queue_message.embeds and queue_message.embeds[0].description != embed2.description:
+                await queue_message.edit(embed=embed2)
 
 class MusicButtons(View):
     def __init__(self, bot: 'MyBot', db: 'Database', parent: Music):
