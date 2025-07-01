@@ -1,20 +1,25 @@
 import asyncio
 import re
+import traceback
 from typing import cast
 import discord
 from discord import Button, Interaction, app_commands
 from discord.ext import commands
 from discord.ui import View
-from pomice import Player, Queue, SearchType, Track
+from pomice import Node, Player, Playlist, PlaylistType, Queue, SearchType, Track, TrackType
 from pomice.enums import LoopMode
 import pomice
 from typing import TYPE_CHECKING
+from urllib.parse import quote
 from bot.cogs.utils.music import (
     default_embed, 
     disabled_buttons, 
     enabled_buttons, 
-    get_duration, 
+    get_duration,
+    now_playing,
+    reset_embeds, 
     same_vc, 
+    update_queue,
 )
 
 if TYPE_CHECKING:
@@ -24,7 +29,7 @@ if TYPE_CHECKING:
 class MusicPlayer(Player):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.autoplay = None
+        self.autoplay = False
         self.queue = Queue()
 
 class Music(commands.Cog, name='music', description='Play, Skip, Seek and more using the music commands'):
@@ -34,26 +39,6 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
         self.view = MusicButtons(bot, db=self.db, parent=self)
         self.channels = []
         self.last_songs = []
-
-    async def now_playing(self, player: MusicPlayer):
-        guild = await self.db.fetchone("SELECT * FROM music WHERE guild_id = %s", player.guild.id)
-        channel = player.guild.get_channel(guild['channel_id'])
-        msg = await channel.fetch_message(guild['message_id'])
-
-        embed = discord.Embed(title=f'Currently Playing', color=self.bot.color)
-        embed.description = f'[{player.current.title}]({player.current.uri})'
-        embed.set_image(url=player.current.thumbnail)
-
-
-        embed.set_footer(
-            text=f'Requested by '
-                 f'{player.current.requester.display_name} - '
-                 f'({get_duration(player.current.length)})',
-            icon_url=self.bot.user.avatar.url)
-
-        enabled_buttons(self.view.children)
-        if not msg.embeds or msg.embeds[0].description != embed.description:
-            await msg.edit(embed=embed, view=self.view)
 
     @app_commands.command(name='music-setup', description='Create a music channel for you to play and control music.')
     async def _setup(self, itr: discord.Interaction):
@@ -90,8 +75,8 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
         
         if not guild:
             await self.db.execute(
-                "INSERT INTO music (guild_id, channel_id, message_id, queue_id, autoplay) VALUES (%s,%s,%s,%s,%s)",
-                itr.guild.id, channel.id, song_msg.id, queue_message.id, False
+                "INSERT INTO music (guild_id, channel_id, message_id, queue_id) VALUES (%s,%s,%s,%s)",
+                itr.guild.id, channel.id, song_msg.id, queue_message.id
             )
 
         else:
@@ -102,30 +87,28 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
 
     @commands.Cog.listener()
     async def on_pomice_track_start(self, player: Player, _: Track):
-        await self.now_playing(player)
+        await now_playing(self, player)
 
     @commands.Cog.listener()
-    async def on_pomice_track_end(self, player: MusicPlayer, track: Track, _: str):
-        disabled_buttons(self.view.children)
-        guild = await self.db.fetchone("SELECT * FROM music WHERE guild_id = %s", player.guild.id)
-        channel = player.guild.get_channel(guild['channel_id'])
-        msg = await channel.fetch_message(guild['message_id'])
-        self.last_songs.append(track.identifier)
-        next = None
+    async def on_pomice_track_end(self, player: MusicPlayer, old_track: Track, _: str):
+
+        if not player.queue.loop_mode:
+            self.last_songs.append(old_track.identifier)
+
+        next_track = None
         try:
-            next = player.queue.get()
+            next_track = player.queue.get()
 
         except pomice.exceptions.QueueEmpty:
+            return await reset_embeds(self, player)
+                    
+        await update_queue(self.bot, self.db, player)
+        return await player.play(next_track)
 
-            if player.autoplay:
-                recommendations = await player.get_recommendations(track=track)
-                next = recommendations[0] if recommendations else None
-        
-        if next:
-            return await player.play(next)
-        else:
-            await msg.edit(embed=default_embed(self.bot)[0], view=self.view)
-        
+    @commands.Cog.listener()
+    async def on_pomice_track_exception(self, data: dict, player: MusicPlayer):
+        print(data)
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
 
@@ -148,15 +131,18 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
 
             player = await message.author.voice.channel.connect(cls=MusicPlayer)
 
-        player.autoplay = guild['autoplay']
-
         if guild['locked']:
             if player.playing:
                 await message.channel.send("Currently locked, cannot add anymore songs.", delete_after=5)
                 return await message.delete()
             await self.db.execute("UPDATE music SET locked = %s WHERE guild_id = %s", False, message.guild.id)
 
-        tracks = await player.get_tracks(message.content, search_type=SearchType.ytsearch)
+        try:
+            is_spotify = re.match(r'https?://open.spotify.com/(?P<type>album|playlist|track|artist)/(?P<id>[a-zA-Z0-9]+)', message.content)
+            search_type = None if is_spotify else SearchType.ytmsearch
+            tracks = await player.get_tracks(message.content, search_type=search_type)
+        except Exception as e:
+            print(repr(e))
 
         if not tracks:
             await message.channel.send(f"Could not find any tracks with that query. Please try again.", delete_after=5)
@@ -200,6 +186,43 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
                 await message.edit(embed=embed, view=self.view)
             if queue_message.embeds and queue_message.embeds[0].description != embed2.description:
                 await queue_message.edit(embed=embed2)
+
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member: discord.Member, before, after):
+        player = cast(MusicPlayer, member.guild.voice_client)
+
+        if member.id == self.bot.user.id:
+            if before.channel and not after.channel:
+                if player:
+                    await reset_embeds(self, player)
+                return
+
+        if not player or not player.channel:
+            return
+
+        if before.channel and before.channel == player.channel:
+            remaining = [m for m in player.channel.members if not m.bot]
+            if not remaining:
+                await reset_embeds(self, player)
+
+    @commands.Cog.listener()
+    async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
+        db_channel = await self.bot.db.fetchone(
+            "SELECT * FROM music WHERE channel_id = %s AND guild_id = %s",
+            channel.id, channel.guild.id
+        )
+
+        if db_channel:
+            await self.bot.db.execute(
+                "DELETE FROM music WHERE channel_id = %s AND guild_id = %s",
+                channel.id, channel.guild.id
+            )
+
+        if isinstance(channel, discord.VoiceChannel):
+            player = self.bot.pomice.get_best_node().get_player(channel.guild.id)
+            if player and player.channel and player.channel.id == channel.id:
+                await reset_embeds(player)
+
 
 class MusicButtons(View):
     def __init__(self, bot: 'MyBot', db: 'Database', parent: Music):
@@ -281,7 +304,7 @@ class MusicButtons(View):
     async def repeat_playlist(self, itr: Interaction, _: Button):
         player = cast(MusicPlayer, itr.guild.voice_client)
 
-        if player.queue.mode == LoopMode.QUEUE:
+        if player.queue.loop_mode == LoopMode.QUEUE:
             player.queue.disable_loop()
             self.success.description = 'Playlist loop DISABLED'
             await itr.response.send_message(embed=self.success, ephemeral=True, delete_after=5)
@@ -379,15 +402,17 @@ class MusicButtons(View):
 
         if not player.autoplay:
             player.autoplay = True
-            await self.db.execute("UPDATE music SET autoplay = %s WHERE guild_id = %s", True, itr.guild.id)
+
+            if player.queue.is_empty:
+                await update_queue(self.bot, self.db, player)
+
             self.success.description = 'AutoPlay enabled, this feature will add songs to the queue automatically'
-            await itr.response.send_message(embed=self.success, ephemeral=True, delete_after=5)  # noqa
+            await itr.response.send_message(embed=self.success, ephemeral=True, delete_after=5)
 
         else:
             player.autoplay = False
-            await self.db.execute("UPDATE music SET autoplay = %s WHERE guild_id = %s", False, itr.guild.id)
             self.success.description = 'AutoPlay disabled, this feature will add songs to the queue automatically'
-            await itr.response.send_message(embed=self.success, ephemeral=True, delete_after=5)  # noqa
+            await itr.response.send_message(embed=self.success, ephemeral=True, delete_after=5)
 
     @discord.ui.button(emoji='<:Like:1158995854661791794>', custom_id='btn-like-song')
     async def like_song(self, itr: Interaction, _: Button):
@@ -512,26 +537,6 @@ class MusicClipModal(discord.ui.Modal, title='Song Timestamp'):
 
     async def on_timeout(self) -> None:
         self.stop()
-
-async def update_queue(bot: 'MyBot', db: 'Database', player: MusicPlayer):
-    guild = await db.fetchone("SELECT * FROM music WHERE guild_id = %s", player.guild.id)
-    channel = player.guild.get_channel(guild['channel_id'])
-    queue_message = await channel.fetch_message(guild['queue_id'])
-
-    embed = discord.Embed(title=f'Current Queue | {player.queue.count} Songs', color=bot.color)
-    desc = []
-    for i, song in enumerate(list(player.queue.get_queue())[:10], start=1):
-        song: Track
-        desc.append(
-            f"**{i}. {song.title}**"
-            f'[{song.author} 'f'({get_duration(song.length)})]({song.uri})\n'
-        )
-    if player.queue.count > 10:
-        desc.append(f'{player.queue.count - 10} More songs.....')
-
-    embed.description = '\n'.join(desc)
-    if not queue_message.embeds or queue_message.embeds[0].description != embed.description:
-        await queue_message.edit(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Music(bot))

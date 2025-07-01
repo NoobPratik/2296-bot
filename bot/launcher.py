@@ -66,7 +66,6 @@ def setup_logging():
 async def run_bot(dev):
     bot = MyBot(dev=dev)
     token = os.environ['DISCORD_DEV'] if dev else os.environ['DISCORD_MAIN']
-    bot.dev = dev
 
     try:
         await bot.start(token, reconnect=True)

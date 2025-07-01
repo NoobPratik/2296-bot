@@ -50,13 +50,16 @@ class MyBot(commands.Bot):
     @discord.utils.cached_property
     def webhook(self):
         wh_id = os.getenv("DISCORD_ERRORS_WEBHOOK_ID")
-        wh_token = self.cp.get("webhook", "webhook-token")
+        wh_token = os.getenv("DISCORD_ERRORS_WEBHOOK_TOKEN")
         return discord.Webhook.partial(
-            id=wh_id, token=wh_token, session=self.session
+            id=wh_id, token=wh_token, client=self
         )
 
     async def start_nodes(self):
-        host = os.environ["LAVALINK_HOST"]
+
+        is_docker = os.getenv("IS_DOCKER", False)
+
+        host = os.environ["LAVALINK_HOST"] if not is_docker else "lavalink"
         port = int(os.environ["LAVALINK_PORT"])
         password = os.environ["LAVALINK_PASSWORD"]
         identifier = os.environ.get("LAVALINK_IDENTIFIER", "MAIN")

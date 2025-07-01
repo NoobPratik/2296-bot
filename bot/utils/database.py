@@ -40,7 +40,10 @@ class Database(object):
 
     @staticmethod
     async def mysql_create_pool():
-        host = os.getenv("MYSQL_HOST", "localhost")
+
+        is_docker = os.getenv("IS_DOCKER", False)
+
+        host = os.getenv("MYSQL_HOST", "localhost") if not is_docker else "mysql"
         user = os.getenv("MYSQL_USER", "root")
         password = os.getenv("MYSQL_PASSWORD", os.getenv("MYSQL_ROOT_PASSWORD"))
         db = os.getenv("MYSQL_DATABASE", "main")
