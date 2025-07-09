@@ -4,21 +4,10 @@ import dotenv
 import aiomysql
 import os
 
+from bot.utils.types import AttrDict, AttrDictCursor
+
 dotenv.load_dotenv()
 log = logging.getLogger(__name__)
-
-
-class AttrDict(dict):
-
-    def __getattr__(self, item):
-        try:
-            return self[item]
-        except KeyError:
-            return None
-
-
-class AttrDictCursor(aiomysql.DictCursor):
-    dict_type = AttrDict
 
 
 class Database(object):
@@ -27,19 +16,22 @@ class Database(object):
     def __init__(self):
         self.music = None
 
-    async def db_get_pools(self):
-        self.music = await self.mysql_create_pool()
-        log.info("[Database] MySQL connection pools created!")
+    async def db_get_pools(self) -> None:
+        try:
+            self.music = await self.mysql_create_pool()
+            log.info("[Database] MySQL connection pools created!")
+        except Exception as e:
+            self.music = None
+            log.warning(f"[Database] Could not connect to MySQL: {e}")
 
-    async def db_close(self):
+    async def db_close(self) -> None:
         if self.music:
             self.music.close()
             await self.music.wait_closed()
 
         log.info("[Database] MySQL connection pools closed! ")
 
-    @staticmethod
-    async def mysql_create_pool():
+    async def mysql_create_pool(self) -> aiomysql.Pool:
 
         is_docker = os.getenv("IS_DOCKER", False)
 
@@ -63,13 +55,17 @@ class Database(object):
 
     async def fetchone(self, sql, *args) -> Optional[AttrDict]:
         async with self.music.acquire() as conn:
+            conn: aiomysql.Connection
             async with conn.cursor(AttrDictCursor) as cur:
+                cur: aiomysql.Cursor
                 await cur.execute(sql, args)
                 return await cur.fetchone()
 
     async def fetchall(self, sql, *args) -> List[AttrDict]:
         async with self.music.acquire() as conn:
+            conn: aiomysql.Connection
             async with conn.cursor(AttrDictCursor) as cur:
+                cur: aiomysql.Cursor
                 await cur.execute(sql, args)
                 return await cur.fetchall()
 

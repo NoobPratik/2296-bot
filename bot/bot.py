@@ -29,7 +29,7 @@ class MyBot(commands.Bot):
             'valorant',
             'miscellaneous',
             'help',
-            'errors'
+            'errors',
         ]
 
         self.pomice = pomice.NodePool()

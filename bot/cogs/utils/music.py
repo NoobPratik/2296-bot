@@ -1,7 +1,6 @@
-import re
 from urllib.parse import quote
 from discord import Interaction
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 import discord
 from pomice import LoopMode, Playlist, PlaylistType, Track, TrackType

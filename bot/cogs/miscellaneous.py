@@ -1,3 +1,4 @@
+import json
 from random import choice
 
 import discord
@@ -60,14 +61,14 @@ class Fun(commands.Cog, name='miscellaneous', description='**Just some commands 
 
             tds = row.find_all('td')
             if not len(tds) >= 4:
-                return
+                continue
             
             name = tds[0].text.strip()
             ingredients = tds[1].text.strip()
 
             image_element = tds[2].find('img')
             if not image_element:
-                return
+                continue
             
             image_src = image_element['src'].strip()
             description = tds[3].text.strip()

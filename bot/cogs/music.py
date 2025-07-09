@@ -1,16 +1,14 @@
 import asyncio
 import re
-import traceback
 from typing import cast
 import discord
 from discord import Button, Interaction, app_commands
 from discord.ext import commands
 from discord.ui import View
-from pomice import Node, Player, Playlist, PlaylistType, Queue, SearchType, Track, TrackType
+from pomice import Player, Queue, SearchType, Track
 from pomice.enums import LoopMode
 import pomice
 from typing import TYPE_CHECKING
-from urllib.parse import quote
 from bot.cogs.utils.music import (
     default_embed, 
     disabled_buttons, 

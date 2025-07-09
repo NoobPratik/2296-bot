@@ -1,95 +1,13 @@
+from datetime import datetime
+import logging
+from zoneinfo import ZoneInfo
 from discord import Embed
+import requests
+
+log = logging.getLogger(__name__)
 
 
-RANKS = {'UNRANKED': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/0/largeicon.png', 'IRON 1': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/3/largeicon.png', 'IRON 2': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/4/largeicon.png', 'IRON 3': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/5/largeicon.png', 'BRONZE 1': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/6/largeicon.png', 'BRONZE 2': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/7/largeicon.png', 'BRONZE 3': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/8/largeicon.png', 'SILVER 1': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/9/largeicon.png', 'SILVER 2': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/10/largeicon.png', 'SILVER 3': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/11/largeicon.png', 'GOLD 1': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/12/largeicon.png', 'GOLD 2': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/13/largeicon.png', 'GOLD 3': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/14/largeicon.png', 'PLATINUM 1': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/15/largeicon.png',
-            'PLATINUM 2': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/16/largeicon.png', 'PLATINUM 3': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/17/largeicon.png', 'DIAMOND 1': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/18/largeicon.png', 'DIAMOND 2': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/19/largeicon.png', 'DIAMOND 3': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/20/largeicon.png', 'IMMORTAL 1': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/24/largeicon.png', 'IMMORTAL 2': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/25/largeicon.png', 'IMMORTAL 3': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/26/largeicon.png', 'RADIANT': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/27/largeicon.png', 'IMMORTAL': 'https://media.valorant-api.com/competitivetiers/23eb970e-6408-bc0b-3f20-d8fb0e0354ea/21/largeicon.png', 'ASCENDANT 1': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/21/largeicon.png', 'ASCENDANT 2': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/22/largeicon.png', 'ASCENDANT 3': 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/23/largeicon.png'}
-RANK_COLORS = {
-    "IRON 1": 0x3e3e3e,
-    "IRON 2": 0x4b4b4b,
-    "IRON 3": 0x5a5a5a,
-
-    "BRONZE 1": 0x976b30,
-    "BRONZE 2": 0xa7773a,
-    "BRONZE 3": 0xb88344,
-
-    "SILVER 1": 0xbcbcbc,
-    "SILVER 2": 0xc8c8c8,
-    "SILVER 3": 0xd4d4d4,
-
-    "GOLD 1": 0xe4b93b,
-    "GOLD 2": 0xeac24d,
-    "GOLD 3": 0xf0cb5f,
-
-    "PLATINUM 1": 0x38b9ad,
-    "PLATINUM 2": 0x4bc8bc,
-    "PLATINUM 3": 0x5fd7cc,
-
-    "DIAMOND 1": 0xb65aff,
-    "DIAMOND 2": 0xc273ff,
-    "DIAMOND 3": 0xcd8cff,
-
-    "ASCENDANT 1": 0x4fd161,
-    "ASCENDANT 2": 0x62dc74,
-    "ASCENDANT 3": 0x75e786,
-
-    "IMMORTAL 1": 0xbd2fae,
-    "IMMORTAL 2": 0xc748b6,
-    "IMMORTAL 3": 0xd161be,
-
-    "RADIANT": 0xffff64
-}
-MAP_ICONS = {
-    "Ascent": "https://media.valorant-api.com/maps/7eaecc1b-4337-bbf6-6ab9-04b8f06b3319/listviewicon.png",
-    "Split": "https://media.valorant-api.com/maps/d960549e-485c-e861-8d71-aa9d1aed12a2/listviewicon.png",
-    "Fracture": "https://media.valorant-api.com/maps/b529448b-4d60-346e-e89e-00a4c527a405/listviewicon.png",
-    "Bind": "https://media.valorant-api.com/maps/2c9d57ec-4431-9c5e-2939-8f9ef6dd5cba/listviewicon.png",
-    "Breeze": "https://media.valorant-api.com/maps/2fb9a4fd-47b8-4e7d-a969-74b4046ebd53/listviewicon.png",
-    "District": "https://media.valorant-api.com/maps/690b3ed2-4dff-945b-8223-6da834e30d24/listviewicon.png",
-    "Kasbah": "https://media.valorant-api.com/maps/12452a9d-48c3-0b02-e7eb-0381c3520404/listviewicon.png",
-    "Drift": "https://media.valorant-api.com/maps/2c09d728-42d5-30d8-43dc-96a05cc7ee9d/listviewicon.png",
-    "Glitch": "https://media.valorant-api.com/maps/d6336a5a-428f-c591-98db-c8a291159134/listviewicon.png",
-    "Piazza": "https://media.valorant-api.com/maps/de28aa9b-4cbe-1003-320e-6cb3ec309557/listviewicon.png",
-    "Abyss": "https://media.valorant-api.com/maps/224b0a95-48b9-f703-1bd8-67aca101a61f/listviewicon.png",
-    "Lotus": "https://media.valorant-api.com/maps/2fe4ed3a-450a-948b-6d6b-e89a78e680a9/listviewicon.png",
-    "Sunset": "https://media.valorant-api.com/maps/92584fbe-486a-b1b2-9faa-39b0f486b498/listviewicon.png",
-    "Basic Training": "https://media.valorant-api.com/maps/1f10dab3-4294-3827-fa35-c2aa00213cf3/listviewicon.png",
-    "Pearl": "https://media.valorant-api.com/maps/fd267378-4d1d-484f-ff52-77821ed10dc2/listviewicon.png",
-    "Icebox": "https://media.valorant-api.com/maps/e2ad5c54-4114-a870-9641-8ea21279579a/listviewicon.png",
-    "The Range": "https://media.valorant-api.com/maps/5914d1e0-40c4-cfdd-6b88-eba06347686c/listviewicon.png",
-    "Haven": "https://media.valorant-api.com/maps/2bee0dc9-4ffe-519b-1cbd-7fbe763a6047/listviewicon.png"
-}
-AGENT_ICONS = {
-    "Gekko": "https://media.valorant-api.com/agents/e370fa57-4757-3604-3648-499e1f642d3f/killfeedportrait.png",
-    "Fade": "https://media.valorant-api.com/agents/dade69b4-4f5a-8528-247b-219e5a1facd6/killfeedportrait.png",
-    "Breach": "https://media.valorant-api.com/agents/5f8d3a7f-467b-97f3-062c-13acf203c006/killfeedportrait.png",
-    "Deadlock": "https://media.valorant-api.com/agents/cc8b64c8-4b25-4ff9-6e7f-37b4da43d235/killfeedportrait.png",
-    "Tejo": "https://media.valorant-api.com/agents/b444168c-4e35-8076-db47-ef9bf368f384/killfeedportrait.png",
-    "Raze": "https://media.valorant-api.com/agents/f94c3b30-42be-e959-889c-5aa313dba261/killfeedportrait.png",
-    "Chamber": "https://media.valorant-api.com/agents/22697a3d-45bf-8dd7-4fec-84a9e28c69d7/killfeedportrait.png",
-    "KAY/O": "https://media.valorant-api.com/agents/601dbbe7-43ce-be57-2a40-4abd24953621/killfeedportrait.png",
-    "Skye": "https://media.valorant-api.com/agents/6f2a04ca-43e0-be17-7f36-b3908627744d/killfeedportrait.png",
-    "Cypher": "https://media.valorant-api.com/agents/117ed9e3-49f3-6512-3ccf-0cada7e3823b/killfeedportrait.png",
-    "Sova": "https://media.valorant-api.com/agents/320b2a48-4d9b-a075-30f1-1f93a9b638fa/killfeedportrait.png",
-    "Killjoy": "https://media.valorant-api.com/agents/1e58de9c-4950-5125-93e9-a0aee9f98746/killfeedportrait.png",
-    "Harbor": "https://media.valorant-api.com/agents/95b78ed7-4637-86d9-7e41-71ba8c293152/killfeedportrait.png",
-    "Vyse": "https://media.valorant-api.com/agents/efba5359-4016-a1e5-7626-b1ae76895940/killfeedportrait.png",
-    "Viper": "https://media.valorant-api.com/agents/707eab51-4836-f488-046a-cda6bf494859/killfeedportrait.png",
-    "Phoenix": "https://media.valorant-api.com/agents/eb93336a-449b-9c1b-0a54-a891f7921d69/killfeedportrait.png",
-    "Astra": "https://media.valorant-api.com/agents/41fb69c1-4189-7b37-f117-bcaf1e96f1bf/killfeedportrait.png",
-    "Brimstone": "https://media.valorant-api.com/agents/9f0d8ba9-4140-b941-57d3-a7ad57c6b417/killfeedportrait.png",
-    "Iso": "https://media.valorant-api.com/agents/0e38b510-41a8-5780-5e8f-568b2a4f2d6c/killfeedportrait.png",
-    "Clove": "https://media.valorant-api.com/agents/1dbf2edd-4729-0984-3115-daa5eed44993/killfeedportrait.png",
-    "Neon": "https://media.valorant-api.com/agents/bb2a4828-46eb-8cd1-e765-15848195d751/killfeedportrait.png",
-    "Yoru": "https://media.valorant-api.com/agents/7f94d92c-4234-0a36-9646-3a87eb8b5c89/killfeedportrait.png",
-    "Waylay": "https://media.valorant-api.com/agents/df1cb487-4902-002e-5c17-d28e83e78588/killfeedportrait.png",
-    "Sage": "https://media.valorant-api.com/agents/569fdd95-4d10-43ab-ca70-79becc718b46/killfeedportrait.png",
-    "Reyna": "https://media.valorant-api.com/agents/a3bfb853-43b2-7238-a4f1-ad90e9e46bcc/killfeedportrait.png",
-    "Omen": "https://media.valorant-api.com/agents/8e253930-4c05-31dd-1b6c-968525494517/killfeedportrait.png",
-    "Jett": "https://media.valorant-api.com/agents/add6443a-41bd-e414-f6ad-e58d267f4e95/killfeedportrait.png"
-}
-
-
-def build_rank_embed(name, icon_url, rank_icon, current_rank, rr, elo, rr_change, peak_rank):
+def build_rank_embed(name, icon_url, rank_icon, current_rank, rr, elo, rr_change, peak_rank) -> Embed:
     embed = Embed()
     embed.set_author(name=name, icon_url=icon_url)
     embed.set_thumbnail(url=rank_icon)
@@ -99,35 +17,222 @@ def build_rank_embed(name, icon_url, rank_icon, current_rank, rr, elo, rr_change
     embed.color = 0x7289DA
     return embed
 
-def build_match_embed(name, card_icon, agent, map_name, win, score, players):
-    embed = Embed(
-        title=("Victory" if win else "Defeat") + f" ({score})",
-        color=0x00FF00 if win else 0xFF0000
-    )
-    embed.set_author(name=name, icon_url=card_icon)
-    embed.set_image(url=f"https://media.valorant-api.com/maps/{map_name.lower().replace(' ', '-')}/splash.png")
-    embed.set_thumbnail(url=f"https://media.valorant-api.com/agents/{agent.lower()}/displayicon.png")
 
-    for team in ["Red", "Blue"]:
-        team_players = [p for p in players if p["team"].lower() == team.lower()]
-        value = "\n".join(
-            f"`{p['name']} | {p['stats']['kills']}/{p['stats']['deaths']}/{p['stats']['assists']} | {p.get('currenttier_patched', 'Unranked')}`"
-            for p in team_players
-        )
-        embed.add_field(name=f"`{team} Team`", value=value, inline=False)
+def build_match_embed(match_data: dict, player_card: str) -> Embed:
+    win = match_data["win"] == match_data["player_team"]
+
+    player_team = match_data["player_team"]
+    opponent_team = "Red" if player_team == "Blue" else "Blue"
+    player_score = match_data["score"][player_team]
+    opponent_score = match_data["score"][opponent_team]
+
+    score_display = f"{player_score} - {opponent_score}"
+
+    title = f"🔺 Victory ({score_display})" if win else f"🔻 Defeat ({score_display})"
+    color = 0x00FF00 if win else 0xFF0000
+    embed = Embed(title=title, color=color)
+    embed.set_footer(text=_get_datetime_footer(match_data))
+
+    player = f"{match_data['player']['name']}#{match_data['player']['tag']}"
+    embed.set_author(name=player, icon_url=player_card)
+
+    _map = match_data['map']
+    _agent = match_data['agent'].lower()
+    embed.set_image(url=MAP_ICONS[_map])
+    embed.set_thumbnail(
+        url=f"https://media.valorant-api.com/agents/{_agent}/displayicon.png")
+
+    _rounds_played = match_data['score']['Red'] + match_data['score']['Blue']
+
+    teams = ["red_team", "blue_team"]
+    team_is_winner = {
+        "red_team": match_data["win"] == "Red",
+        "blue_team": match_data["win"] == "Blue"
+    }
+
+    for idx, team in enumerate(teams):
+        players = sorted(
+            match_data[team], key=lambda x: x['stats']['score'], reverse=True)
+        is_winning_team = team_is_winner[team]
+
+        for i, player in enumerate(players):
+            _agent = AGENT_ICONS.get(player['character'], "")
+            _rank = RANK_ICONS.get(player['currenttier_patched'].upper(), "")
+
+            kda = f"{player['stats']['kills']}/{player['stats']['deaths']}/{player['stats']['assists']}"
+            acs = round(player['stats']['score'] / _rounds_played)
+            hs_percent = _get_headshot_percentage(player)
+
+            star = ""
+            if i == 0:
+                star = "⭐" if is_winning_team else "☆"
+
+            name = f"{_agent} {_rank} {player['name']}#{player['tag']} {star}"
+            value = f"`KDA: {kda:<7} | ACS: {acs:<3} | HS: {hs_percent:<5}`"
+            embed.add_field(name=name, value=value, inline=False)
+
+        if idx == 0:
+            embed.add_field(name="`" + "-" * 39 + "`", value="", inline=False)
 
     return embed
 
-def get_match_data(match, name):
-    metadata = match.get('metadata', {})
-    players = match.get('players', {}).get('all_players', [])
-    map_name = metadata.get('map', 'Unknown')
-    rounds = match.get('teams', {})
-    blue_score = rounds.get('blue', {}).get('rounds_won', 0)
-    red_score = rounds.get('red', {}).get('rounds_won', 0)
-    score = f"{blue_score} - {red_score}"
-    win = (match['teams'][players[0]['team'].lower()]['has_won'])
-    player = next((p for p in players if p['name'] == name), players[0])
-    agent = player.get('character', 'Unknown')
 
-    return { "agent": agent, "map_name": map_name, "win": win, "score": score, "players": players}
+def _get_headshot_percentage(player: dict) -> str:
+    headshots = player['stats']['headshots']
+    bodyshots = player['stats']['bodyshots']
+    legshots = player['stats']['headshots']
+
+    hs_percent = (headshots / (headshots + bodyshots + legshots)) * 100
+    return f'{hs_percent:.1f}%'
+
+
+def _get_datetime_footer(match_data: dict) -> str:
+    try:
+        date_str = match_data['datetime'].strftime("%b %-d, %-I:%M %p")
+    except ValueError:
+        date_str = match_data['datetime'].strftime("%b %#d, %#I:%M %p")
+
+    total_minutes = match_data['game_length'] // 60
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+
+    if hours > 0:
+        duration_str = f"{hours}h {minutes}m"
+    else:
+        duration_str = f"{minutes}m"
+
+    _map = match_data['map']
+    mode = match_data['game_mode']
+    return f"Played on {date_str} ({duration_str})\nMap: {_map} | Mode: {mode}"
+
+
+def get_match_data(match: dict, puuid: str) -> dict:
+    metadata = match.get('metadata', {})
+    all_players = match.get('players', {}).get('all_players', [])
+
+    player = next((p for p in all_players if p['puuid'] == puuid), None)
+    if not player:
+        raise ValueError("Player not found in match")
+
+    player_team = player.get('team')
+    red_team = [p for p in all_players if p.get('team') == 'Red']
+    blue_team = [p for p in all_players if p.get('team') == 'Blue']
+
+    red_score = match['teams'].get('red', {}).get('rounds_won', 0)
+    blue_score = match['teams'].get('blue', {}).get('rounds_won', 0)
+
+    winning_team = 'Red' if match['teams']['red']['has_won'] else 'Blue'
+
+    game_start_str = metadata.get('game_start_patched', None)
+    if game_start_str:
+        game_datetime = datetime.strptime(
+            game_start_str, "%A, %B %d, %Y %I:%M %p").astimezone(ZoneInfo("Asia/Kolkata"))
+
+    return {
+        "map": metadata.get("map", "Unknown"),
+        "game_mode": metadata.get("mode", "Unknown"),
+        "game_length": metadata.get("game_length", 0),
+        "datetime": game_datetime or "Unknown",
+        "score": {
+            "Red": red_score,
+            "Blue": blue_score,
+        },
+        "win": winning_team,
+        "player_team": player_team,
+        "agent": player.get("character", "Unknown"),
+        "red_team": red_team,
+        "blue_team": blue_team,
+        "player": player,
+    }
+
+
+def _get_puuid(data: dict, name: str) -> str:
+    """
+    Extracts the PUUID from the provided data based on the player's name.
+    """
+    players = data.get('data', [{}])[0].get(
+        'players', {}).get('all_players', [])
+    for player in players:
+        if player.get('name', '').lower() == name.lower():
+            return player.get('puuid')
+    return None
+
+
+def _get_map_icons() -> dict:
+    resp = requests.get("https://valorant-api.com/v1/maps")
+
+    if resp.status_code != 200:
+        log.warning('Unable to fetch valorant map icons')
+        return {}
+
+    _map_icons = {x['displayName']: x["listViewIcon"]
+                  for x in resp.json()['data']}
+    return _map_icons
+
+
+async def _add_default_crosshair(db, user_id) -> None:
+    """
+    Adds a default crosshair when user doesnt have any crosshairs in database
+    """
+
+    query = "INSERT INTO valorant_crosshairs (user_id, label, code) VALUES (%s, %s, %s) AS new"
+    await db.execute(query, user_id, "default" ,"0;P;h;0;f;0;0l;4;0o;2;0a;1;0f;0;1b;0")
+
+MAP_ICONS = _get_map_icons()
+AGENT_ICONS = {
+    'Gekko': '<:gekko:1391997619185782897>',
+    'Fade': '<:fade:1391997621706428427>',
+    'Breach': '<:breach:1391997626274025634>',
+    'Deadlock': '<:deadlock:1391997630468329472>',
+    'Tejo': '<:tejo:1391997634037682206>',
+    'Raze': '<:raze:1391997636562653184>',
+    'Chamber': '<:chamber:1391997640660615198>',
+    'Skye': '<:skye:1391997648956817448>',
+    'Cypher': '<:cypher:1391997653713158215>',
+    'Sova': '<:sova:1391997657995677696>',
+    'Killjoy': '<:killjoy:1391997661954965605>',
+    'Harbor': '<:harbor:1391997664421216346>',
+    'Vyse': '<:vyse:1391997667093119146>',
+    'Viper': '<:viper:1391997670750683257>',
+    'Phoenix': '<:phoenix:1391997673116270635>',
+    'Astra': '<:astra:1391997677008584745>',
+    'Brimstone': '<:brimstone:1391997682502996099>',
+    'Iso': '<:iso:1391997687049621514>',
+    'Clove': '<:clove:1391997690103206038>',
+    'Neon': '<:neon:1391997695119458304>',
+    'Yoru': '<:yoru:1391997700047765544>',
+    'Waylay': '<:waylay:1391997703176851467>',
+    'Sage': '<:sage:1391997707484397728>',
+    'Reyna': '<:reyna:1391997711716192267>',
+    'Omen': '<:omen:1391997715637866517>',
+    'Jett': '<:jett:1391997719748415561>',
+    'KAY/O': '<kayo:1392007591093342280>'
+}
+RANK_ICONS = {
+    'UNRATED': '<:unranked:1391997725897392258>',
+    'IRON 1': '<:iron_1:1391997728204132443>',
+    'IRON 2': '<:iron_2:1391997730825568379>',
+    'IRON 3': '<:iron_3:1391997733526700082>',
+    'BRONZE 1': '<:bronze_1:1391997735766458388>',
+    'BRONZE 2': '<:bronze_2:1391997739222437978>',
+    'BRONZE 3': '<:bronze_3:1391997744704524368>',
+    'SILVER 1': '<:silver_1:1391997746617254003>',
+    'SILVER 2': '<:silver_2:1391997750584934461>',
+    'SILVER 3': '<:silver_3:1391997754376454225>',
+    'GOLD 1': '<:gold_1:1391997756331135028>',
+    'GOLD 2': '<:gold_2:1391997759267143821>',
+    'GOLD 3': '<:gold_3:1391997763302195311>',
+    'PLATINUM 1': '<:platinum_1:1391997766166642768>',
+    'PLATINUM 2': '<:platinum_2:1391997769127825430>',
+    'PLATINUM 3': '<:platinum_3:1391997772797972522>',
+    'DIAMOND 1': '<:diamond_1:1391997775603826749>',
+    'DIAMOND 2': '<:diamond_2:1391997778225270826>',
+    'DIAMOND 3': '<:diamond_3:1391997781505347646>',
+    'ASCENDANT 1': '<:ascendant_1:1391997784025989222>',
+    'ASCENDANT 2': '<:ascendant_2:1391997787033309317>',
+    'ASCENDANT 3': '<:ascendant_3:1391997789839298691>',
+    'IMMORTAL 1': '<:immortal_1:1391997792762855425>',
+    'IMMORTAL 2': '<:immortal_2:1391997797225730160>',
+    'IMMORTAL 3': '<:immortal_3:1391997799872069633>',
+    'RADIANT': '<:radiant:1391997803131306034>'
+}

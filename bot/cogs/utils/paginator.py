@@ -1,5 +1,4 @@
 from typing import Optional, List, Union
-
 from discord import Interaction, SelectOption, User, ButtonStyle
 from discord.ui import View, Select, button, Button
 
@@ -114,4 +113,8 @@ class Paginator:
         await self.itr.edit_original_response(content='\u200b', embed=embed, view=view if embed else None)
         if embed:
             await view.wait()
-            await self.itr.edit_original_response(content='\u200b', embed=embed, view=None)
+
+            for child in view.children:
+                child.disabled = True
+
+            await self.itr.edit_original_response(content='\u200b', embed=embed, view=view)

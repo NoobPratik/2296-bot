@@ -80,6 +80,28 @@ class Errors(commands.Cog):
         e.timestamp = datetime.now()
         await self.bot.webhook.send(embed=e)
 
+    async def register_command(self, itr: discord.Interaction, is_error=None):
+        command = itr.command
+        if not command:
+            return
+
+        if isinstance(command, discord.app_commands.ContextMenu):
+            full = [
+                'context_menu',
+            ]
+        else:
+            full = [
+                command.name,
+                command.parent.name if command.parent else '',
+                command.root_parent.name if command.root_parent and command.parent != command.root_parent else ''
+            ]
+        command_name = ' '.join(reversed(full)).lstrip()
+
+        postfix = f'[E: {is_error.args[0]}] /{command_name}' if is_error else f'/{command_name}'
+        destination = f'#{itr.channel} ({itr.guild})' if itr.guild else 'Private Message'
+
+        log.info(f'{itr.user} in {destination}: {postfix}')
+
 old_on_error = commands.Bot.on_error
 old_on_command_error = app_commands.CommandTree.on_error
 
@@ -87,7 +109,6 @@ async def on_error(self, event, *args, **kwargs):
     (exc_type, exc, tb) = sys.exc_info()
     if isinstance(exc, app_commands.CommandInvokeError):
         return
-    print('error occured')
     e = discord.Embed(title='Event Error', colour=0xa32952)
     e.add_field(name='Event', value=event)
     trace = "".join(traceback.format_exception(exc_type, exc, tb))
