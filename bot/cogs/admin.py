@@ -1,14 +1,10 @@
-from typing import Literal, Optional
 import discord
 from discord.ext import commands
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from bot.bot import MyBot
+from discord import app_commands, Object
+from typing import Literal, Optional
 
 class Admin(commands.Cog):
-    def __init__(self, bot: 'MyBot'):
-        super().__init__()
+    def __init__(self, bot):
         self.bot = bot
 
     @commands.command(name="sync")
@@ -18,57 +14,62 @@ class Admin(commands.Cog):
         self,
         ctx: commands.Context,
         scope: Optional[Literal["current", "copy", "clear_local", "clear_global", "global"]] = "global",
-        guilds: commands.Greedy[discord.Object] = []
-    ) -> None:
-        """
-        Sync application commands (slash commands).
-        
-        Parameters:
-        - current: Sync to the current guild.
-        - copy: Copy global commands to current guild and sync.
-        - clear_local: Clear commands from current guild.
-        - clear_global: Clear global commands.
-        - global (default): Sync commands globally.
-        """
+        guilds: commands.Greedy[Object] = []
+    ):
+        tree = self.bot.tree
+        guild = ctx.guild
 
-        # If syncing to specified guilds
         if guilds:
             success = 0
-            for guild in guilds:
+            for g in guilds:
                 try:
-                    await self.bot.tree.sync(guild=guild)
+                    await tree.sync(guild=g)
                     success += 1
-                except discord.HTTPException as e:
-                    await ctx.send(f"Failed to sync to guild `{guild.id}`: {e}")
-            return await ctx.send(f"Synced commands to {success}/{len(guilds)} guilds.")
+                except Exception as e:
+                    await ctx.send(f"Failed to sync to guild {g.id}: {e}")
+            return await ctx.send(f"Synced to {success}/{len(guilds)} guild(s).")
 
-        guild = ctx.guild
         if scope == "current":
-            synced = await self.bot.tree.sync(guild=guild)
-            return await ctx.send(f"✅ Synced {len(synced)} commands to **this guild** (`{guild.name}`)")
+            synced = await tree.sync(guild=guild)
+            return await ctx.send(f"Synced {len(synced)} command(s) to this guild ({guild.name}).")
 
         elif scope == "copy":
-            self.bot.tree.copy_global_to(guild=guild)
-            synced = await self.bot.tree.sync(guild=guild)
-            return await ctx.send(f"✅ Copied and synced {len(synced)} global commands to **this guild**")
+            tree.copy_global_to(guild=guild)
+            synced = await tree.sync(guild=guild)
+            return await ctx.send(f"Copied and synced {len(synced)} global command(s) to this guild ({guild.name}).")
 
         elif scope == "clear_local":
-            self.bot.tree.clear_commands(guild=guild)
-            await self.bot.tree.sync(guild=guild)
-            return await ctx.send(f"🧹 Cleared all **local** commands from this guild (`{guild.name}`)")
+            tree.clear_commands(guild=guild)
+            await tree.sync(guild=guild)
+            return await ctx.send(f"Cleared all local commands from guild ({guild.name}).")
 
         elif scope == "clear_global":
-            self.bot.tree.clear_commands(guild=None)
-            synced = await self.bot.tree.sync()
-            return await ctx.send(f"🧹 Cleared all **global** commands. {len(synced)} commands remain synced.")
+            tree.clear_commands(guild=None)
+            synced = await tree.sync()
+            return await ctx.send(f"Cleared all global commands. {len(synced)} remain synced.")
 
         elif scope == "global":
-            synced = await self.bot.tree.sync()
-            return await ctx.send(f"🌍 Synced {len(synced)} commands **globally**")
+            synced = await tree.sync()
+            return await ctx.send(f"Synced {len(synced)} global command(s).")
 
-        else:
-            return await ctx.send("❌ Invalid sync scope. Please use one of: `current`, `copy`, `clear_local`, `clear_global`, or `global`.")
+        return await ctx.send("Invalid sync scope. Use: `current`, `copy`, `clear_local`, `clear_global`, or `global`.")
 
+    @commands.command(name='resync')
+    @commands.guild_only()
+    @commands.is_owner()
+    async def resync(self, ctx):
+        self.bot.tree.clear_commands(guild=None)
+        await self.bot.tree.sync()
+
+        for guild in self.bot.guilds:
+            self.bot.tree.clear_commands(guild=guild)
+            await self.bot.tree.sync(guild=guild)
+
+        for cog in self.bot._cogs:
+            await self.bot.reload_extension(f"bot.cogs.{cog}")
+
+        synced = await self.bot.tree.sync()
+        await ctx.send(f"Resynced {len(synced)} global command(s).")
 
 async def setup(bot):
     await bot.add_cog(Admin(bot))

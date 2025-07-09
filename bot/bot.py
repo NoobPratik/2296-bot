@@ -23,13 +23,13 @@ class MyBot(commands.Bot):
         self.scheduler = AsyncIOScheduler()
         self._cogs = [
             'anime',
-            'admin',
             'music',
             'games',
             'valorant',
             'miscellaneous',
             'help',
             'errors',
+            'admin',
         ]
 
         self.pomice = pomice.NodePool()
