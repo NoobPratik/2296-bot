@@ -14,7 +14,6 @@ class Errors(commands.Cog):
         self.bot = bot
 
     async def on_error(self, itr: discord.Interaction, error):
-        print('error occured')
         await self.register_command(itr, is_error=error)
         if isinstance(error, app_commands.CommandNotFound):
             return
@@ -78,6 +77,7 @@ class Errors(commands.Cog):
         exc = ''.join(traceback.format_exception(type(error), error, error.__traceback__, chain=False))
         e.description = f'```py\n{exc}\n```'
         e.timestamp = datetime.now()
+        log.error("App command error occurred", exc_info=error)
         await self.bot.webhook.send(embed=e)
 
     async def register_command(self, itr: discord.Interaction, is_error=None):
@@ -121,6 +121,7 @@ async def on_error(self, event, *args, **kwargs):
     args_str.append('```')
     e.add_field(name='Args', value='\n'.join(args_str), inline=False)
     hook = self.webhook
+    log.error(f"Error in event {event}", exc_info=exc)
     try:
         await hook.send(embed=e)
     except Exception as e:

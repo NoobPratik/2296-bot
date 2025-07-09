@@ -34,7 +34,8 @@ class MyBot(commands.Bot):
 
         self.pomice = pomice.NodePool()
         self.economy_enabled = False
-        super().__init__(command_prefix='!',intents=discord.Intents.all())
+        self.is_docker = os.getenv("IS_DOCKER", False)
+        super().__init__(command_prefix='!' if not dev else '.',intents=discord.Intents.all())
 
     async def setup_hook(self):
         logging.info("Setup Initiated.")
@@ -45,6 +46,9 @@ class MyBot(commands.Bot):
         self.scheduler.start()
         await self.db.db_get_pools()
         
+        if self.is_docker:
+            await self.do_sync()
+            
         logging.info("Setup Complete.")
 
     @discord.utils.cached_property
@@ -57,9 +61,7 @@ class MyBot(commands.Bot):
 
     async def start_nodes(self):
 
-        is_docker = os.getenv("IS_DOCKER", False)
-
-        host = os.environ["LAVALINK_HOST"] if not is_docker else "lavalink"
+        host = os.environ["LAVALINK_HOST"] if not self.is_docker else "lavalink"
         port = int(os.environ["LAVALINK_PORT"])
         password = os.environ["LAVALINK_PASSWORD"]
         identifier = os.environ.get("LAVALINK_IDENTIFIER", "MAIN")
@@ -79,8 +81,7 @@ class MyBot(commands.Bot):
             logger.error(f"Failed to start Lavalink node: {e}")
 
     async def do_sync(self):
-        logging.info(
-            f'Preparing for sync. [{"Development" if self.dev else "Production"}]')
+        logging.info( f'Preparing for sync. [{"Development" if self.dev else "Production"}]')
         self.tree.clear_commands(guild=None)
         if not self.dev:
             return await self.tree.sync()
