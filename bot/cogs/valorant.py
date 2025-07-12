@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 from bot.utils.types import Crosshair
 
-from bot.cogs.utils.valorant import _get_puuid, _add_default_crosshair, get_match_data, build_match_embed, build_rank_embed
+from bot.cogs.utils.valorant import get_puuid, get_match_data, build_match_embed, build_rank_embed, add_default_crosshair
 from bot.cogs.utils.paginator import Paginator
 from bot.cogs.views.valorant import AccountSelectView, LinkAccountModal, CrosshairPaginatorView
 
@@ -102,7 +102,7 @@ class Valorant(commands.GroupCog, name='valorant', description='Valorant stat tr
         if not match_history or 'data' not in match_history:
             return await itr.followup.send('Player not found or no recent matches.', ephemeral=True)
 
-        puuid = _get_puuid(match_history, name)
+        puuid = get_puuid(match_history, name)
         profile = await self.api.get_account_by_puuid(puuid)
         card_icon = await self.api.get_player_card_icon(profile['data']['card'])
 
@@ -120,15 +120,13 @@ class Valorant(commands.GroupCog, name='valorant', description='Valorant stat tr
         rows = await db.fetchall(query, user_id)
 
         if not rows:
-            await _add_default_crosshair(self.bot.db, user_id)
+            await add_default_crosshair(self.bot.db, user_id, self.api)
             rows = await self.bot.db.fetchall(query, user_id)
 
         crosshairs = []
 
         for crosshair in rows:
-            image_bytes = await self.api.get_crosshair_from_code(crosshair['code'])
-            crosshairs.append(Crosshair(
-                label=crosshair['label'], code=crosshair['code'], file_bytes=image_bytes))
+            crosshairs.append(Crosshair(label=crosshair['label'], code=crosshair['code'], image_bytes=crosshair['image']))
 
         return crosshairs
 
@@ -186,8 +184,7 @@ class Valorant(commands.GroupCog, name='valorant', description='Valorant stat tr
         view = CrosshairPaginatorView(itr.user, crosshairs, self.bot, self.api)
         crosshair = crosshairs[0]
 
-        file = File(BytesIO(crosshair.file_bytes),
-                    filename=f"{crosshair.label}.png")
+        file = File(BytesIO(crosshair.image_bytes),filename=f"{crosshair.label}.png")
         await itr.edit_original_response(content=f'Name: `{crosshair.label}`\nCode: `{crosshair.code}`', attachments=[file], view=view)
 
         await view.wait()

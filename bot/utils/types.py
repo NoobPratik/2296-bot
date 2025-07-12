@@ -7,7 +7,7 @@ import aiomysql
 class Crosshair:
     label: str
     code: str
-    file_bytes: bytes
+    image_bytes: bytes
 
 class AttrDict(dict):
 

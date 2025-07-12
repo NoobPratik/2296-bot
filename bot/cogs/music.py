@@ -39,14 +39,29 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
         self.last_songs = []
 
     @app_commands.command(name='music-setup', description='Create a music channel for you to play and control music.')
-    async def _setup(self, itr: discord.Interaction):
+    async def _setup(self, itr: discord.Interaction, channel: discord.TextChannel = None):
         await itr.response.defer()
+
+        emoji_guide = (
+            "\nMusic Controls:\n"
+            "<:Repeat:1158995878615453746> Repeat Song | "
+            "<:Lock:1158995859992744008> Lock | "
+            "<:RepeatPlaylist:1158995882918817883> Repeat Queue\n"
+
+            "<:reverse:1158995896193785956> Reverse Queue | "
+            "<:autoplay:1158995839117705235> Autoplay | "
+            "<:Shuffle:1158995909636538458> Shuffle\n"
+
+            "<:playliked:1158995871426433114> Play Liked | "
+            "<:Like:1158995854661791794> Like | "
+            "<:scissors:1158995902443302973> Clip\n"
+        )
 
         state = await self.db.fetchone("SELECT channel_id FROM music WHERE guild_id = %s", itr.guild.id)
 
         if state and state['channel_id']:
-            channel = itr.guild.get_channel(state['channel_id'])
-            if channel:
+            existing_channel = itr.guild.get_channel(state['channel_id'])
+            if existing_channel:
                 embed = discord.Embed(
                     title='Music Channel Already Exists',
                     color=0xFF0000,
@@ -55,7 +70,11 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
                 embed.set_footer(text='Use /music-destroy to remove the channel')
                 return await itr.followup.send(embed=embed, ephemeral=True)
             
-        channel = await itr.guild.create_text_channel(name='2296 Song-Requests')
+        if not channel:
+            channel = await itr.guild.create_text_channel(name='2296 Song-Requests', topic=emoji_guide)
+        else:
+            await channel.edit(topic=emoji_guide)
+
         self.channels.append(channel.id)
         embed, embed2 = default_embed(self.bot)
         disabled_buttons(self.view.children)
@@ -124,14 +143,18 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
         player = cast(MusicPlayer, message.guild.voice_client)
         if not player:
             if not message.author.voice:
-                await message.channel.send('You must be in a vc to listen to music', delete_after=5)
-                return
+                await message.channel.send('Please join a voice channel to use music features.', delete_after=5)
+                return await message.delete()
 
-            player = await message.author.voice.channel.connect(cls=MusicPlayer)
+            try:
+                player = await message.author.voice.channel.connect(cls=MusicPlayer)
+            except pomice.exceptions.NodeNotAvailable:
+                await message.channel.send('The music service is currently unavailable. Please try again shortly.', delete_after=10)
+                return await message.delete()
 
         if guild['locked']:
             if player.playing:
-                await message.channel.send("Currently locked, cannot add anymore songs.", delete_after=5)
+                await message.channel.send("The music channel is locked. Adding new songs is temporarily disabled.", delete_after=5)
                 return await message.delete()
             await self.db.execute("UPDATE music SET locked = %s WHERE guild_id = %s", False, message.guild.id)
 
@@ -143,7 +166,7 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
             print(repr(e))
 
         if not tracks:
-            await message.channel.send(f"Could not find any tracks with that query. Please try again.", delete_after=5)
+            await message.channel.send(f"No matching tracks were found. Please refine your search and try again.", delete_after=5)
             return
         
         if isinstance(tracks, pomice.objects.Playlist):

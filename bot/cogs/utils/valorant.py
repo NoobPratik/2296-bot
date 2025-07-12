@@ -1,8 +1,10 @@
 from datetime import datetime
+from io import BytesIO
 import logging
 from zoneinfo import ZoneInfo
 from discord import Embed
 import requests
+from PIL import Image
 
 log = logging.getLogger(__name__)
 
@@ -146,7 +148,7 @@ def get_match_data(match: dict, puuid: str) -> dict:
     }
 
 
-def _get_puuid(data: dict, name: str) -> str:
+def get_puuid(data: dict, name: str) -> str:
     """
     Extracts the PUUID from the provided data based on the player's name.
     """
@@ -156,6 +158,36 @@ def _get_puuid(data: dict, name: str) -> str:
         if player.get('name', '').lower() == name.lower():
             return player.get('puuid')
     return None
+
+
+def combine_images(bg: bytes, fg: bytes) -> bytes:
+    bg_image = Image.open(BytesIO(bg)).convert("RGBA")
+    fg_image = Image.open(BytesIO(fg)).convert("RGBA").resize(bg_image.size)
+
+    bg_image.paste(fg_image, (0,0), fg_image)
+    buffer = BytesIO()
+    bg_image.save(buffer, format='PNG')
+    return buffer.getvalue()
+
+
+async def add_default_crosshair(db, user_id, api) -> None:
+    """
+    Adds a default crosshair when user doesn't have any crosshairs in database
+    """
+    background_bytes = requests.get("https://www.vcrdb.net/img/bgs/default.webp").content
+    crosshair_bytes = await api.get_crosshair_from_code("0;P;h;0;f;0;0l;4;0o;2;0a;1;0f;0;1b;0")
+
+    crosshair_image = combine_images(background_bytes, crosshair_bytes)
+
+    query = """
+        INSERT INTO valorant_crosshairs (user_id, label, code, image)
+        VALUES (%s, %s, %s, %s) AS new
+        ON DUPLICATE KEY UPDATE
+        label = new.label,
+        code = new.code,
+        image = new.image
+    """
+    await db.execute(query, user_id, "default", "0;P;h;0;f;0;0l;4;0o;2;0a;1;0f;0;1b;0", crosshair_image)
 
 
 def _get_map_icons() -> dict:
@@ -169,14 +201,6 @@ def _get_map_icons() -> dict:
                   for x in resp.json()['data']}
     return _map_icons
 
-
-async def _add_default_crosshair(db, user_id) -> None:
-    """
-    Adds a default crosshair when user doesnt have any crosshairs in database
-    """
-
-    query = "INSERT INTO valorant_crosshairs (user_id, label, code) VALUES (%s, %s, %s) AS new"
-    await db.execute(query, user_id, "default" ,"0;P;h;0;f;0;0l;4;0o;2;0a;1;0f;0;1b;0")
 
 MAP_ICONS = _get_map_icons()
 AGENT_ICONS = {

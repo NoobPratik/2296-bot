@@ -3,6 +3,8 @@ from typing import List
 import discord
 from discord.ui import Modal, TextInput, View, Select, Button, button
 from discord import ButtonStyle, File, Interaction, SelectOption, User
+import requests
+from bot.cogs.utils.valorant import combine_images
 from bot.utils.types import Crosshair
 
 class LinkAccountModal(Modal, title="Link Valorant Account"):
@@ -90,8 +92,7 @@ class CrosshairPaginatorView(View):
         rows = await self.bot.db.fetchall("SELECT * FROM valorant_crosshairs WHERE user_id = %s", self.author.id)
         self.pages.clear()
         for row in rows:
-            image_bytes = await self.api.get_crosshair_from_code(row['code'])
-            self.pages.append(Crosshair(label=row['label'], code=row['code'], file_bytes=image_bytes))
+            self.pages.append(Crosshair(label=row['label'], code=row['code'], image_bytes=row['image']))
 
         self.current_page = max(0, min(self.current_page, len(self.pages) - 1))
         for item in self.children:
@@ -104,7 +105,7 @@ class CrosshairPaginatorView(View):
     async def update_page(self, interaction: Interaction):
         self.update_buttons()
         crosshair = self.pages[self.current_page]
-        file = File(BytesIO(crosshair.file_bytes), filename=f"{crosshair.label}.png")
+        file = File(BytesIO(crosshair.image_bytes), filename=f"{crosshair.label}.png")
         await interaction.response.edit_message(content=f'Name: `{crosshair.label}`\nCode: `{crosshair.code}`', attachments=[file], view=self)
 
     @button(label="➕", style=ButtonStyle.success, row=0)
@@ -151,10 +152,23 @@ class AddCrosshairModal(discord.ui.Modal, title="Add Crosshair"):
         self.view = view
 
     async def on_submit(self, interaction: Interaction):
-        await self.db.execute(
-            "INSERT INTO valorant_crosshairs (user_id, label, code) VALUES (%s, %s, %s)",
-            self.user_id, self.label.value, self.code.value
+
+        background_bytes = requests.get("https://www.vcrdb.net/img/bgs/default.webp").content
+        crosshair_bytes = await self.view.api.get_crosshair_from_code(self.code.value)
+        crosshair_image = combine_images(background_bytes, crosshair_bytes)
+
+        query = """
+            INSERT INTO valorant_crosshairs (user_id, label, code, image)
+            VALUES (%s, %s, %s, %s) AS new
+            ON DUPLICATE KEY UPDATE
+            label = new.label,
+            code = new.code,
+            image = new.image
+        """
+
+        await self.db.execute(query, self.user_id, self.label.value, self.code.value, crosshair_image
         )
+
         await self.view.reload_crosshairs(interaction)
 
 
