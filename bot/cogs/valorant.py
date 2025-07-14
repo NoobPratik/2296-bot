@@ -7,9 +7,7 @@ import aiohttp
 from discord import File, app_commands, Interaction
 from discord.ext import commands
 from dotenv import load_dotenv
-
 from bot.utils.types import Crosshair
-
 from bot.cogs.utils.valorant import get_puuid, get_match_data, build_match_embed, build_rank_embed, add_default_crosshair
 from bot.cogs.utils.paginator import Paginator
 from bot.cogs.views.valorant import AccountSelectView, LinkAccountModal, CrosshairPaginatorView
@@ -27,17 +25,15 @@ class ValorantAPI:
 
     def __init__(self):
         self.api_key = os.getenv("VALORANT_API_KEY")
-        self.headers = {"Authorization": self.api_key}
+        self.session = aiohttp.ClientSession(headers={"Authorization": self.api_key})
 
     async def fetch_json(self, url) -> dict:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=self.headers) as res:
-                return await res.json() if res.status == 200 else None
+        res = await self.session.get(url)
+        return await res.json() if res.status == 200 else None
 
-    async def fetch(self, url):
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=self.headers) as res:
-                return await res.read() if res.status == 200 else None
+    async def fetch_content(self, url):
+        res = await self.session.get(url)
+        return await res.read() if res.status == 200 else None
 
     async def get_rank(self, name, tag) -> dict:
         return await self.fetch_json(f"{self.BASE}/v2/mmr/ap/{name}/{tag}")
@@ -53,7 +49,7 @@ class ValorantAPI:
         return data['data']['displayIcon'] if data else None
 
     async def get_crosshair_from_code(self, code: str):
-        return await self.fetch(f"{self.BASE}/v1/crosshair/generate?id={code}")
+        return await self.fetch_content(f"{self.BASE}/v1/crosshair/generate?id={code}")
 
 
 class Valorant(commands.GroupCog, name='valorant', description='Valorant stat tracking, match history, and crosshair management.'):

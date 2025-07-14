@@ -3,12 +3,62 @@ from discord import Interaction
 from typing import TYPE_CHECKING
 
 import discord
-from pomice import LoopMode, Playlist, PlaylistType, Track, TrackType
+from pomice import LoopMode, Player, Playlist, PlaylistType, Queue, Track, TrackType
+import pomice
 
 if TYPE_CHECKING:
     from bot import MyBot
     from bot.cogs.music import MusicPlayer
     from bot.utils.database import Database
+
+class MusicPlayer(Player):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.autoplay = False
+        self.queue = Queue()
+
+    async def _get_lyrics(self, skip_source: bool = True) -> dict | None:
+        path = f"sessions/{self.node._session_id}/players/{self.guild.id}/track/lyrics"
+        query = f"skipTrackSource={str(skip_source).lower()}"
+
+        try:
+            response = await self.node.send(
+                method="GET",
+                path=path,
+                query=query,
+            )
+        except pomice.exceptions.NodeRestException as e:
+            print(e)
+            return None
+
+        return response['lines']
+            
+    async def _get_recommendations(self) -> Playlist:
+        uri = f"https://www.youtube.com/watch?v={self.current.identifier}&list=RD{self.current.identifier}"
+        query = f"identifier={quote(uri)}"
+
+        data = await self.node.send(
+            method="GET",
+            path="loadtracks",
+            query=query,
+        )
+
+        tracks = [
+            Track(
+                track_id=track["encoded"],
+                info=track["info"],
+                track_type=TrackType(track["info"]["sourceName"]),
+            )
+            for track in data['data']['tracks'][1:]
+        ]
+
+        return Playlist(
+            playlist_info=data.get('playlistInfo', {}),
+            tracks=tracks,
+            playlist_type=PlaylistType(tracks[0].track_type.value),
+            thumbnail=tracks[0].thumbnail,
+            uri=uri,
+        )
 
 def same_vc(itr: Interaction, player: 'MusicPlayer'):
     if not itr.user.voice:
@@ -112,7 +162,7 @@ async def update_queue(bot: 'MyBot', db: 'Database', player: 'MusicPlayer') -> N
                   "(Queue Loop)" if player.queue.loop_mode == LoopMode.QUEUE else ""
     
     if player.queue.is_empty and player.autoplay and not player.queue.loop_mode:
-        recommendations = await _get_recommendations(track=player.current, player=player)
+        recommendations = await player._get_recommendations()
         # recommendations = await player.get_recommendations(track=player.current)
         if recommendations:
             player.queue.extend(recommendations.tracks)
@@ -136,30 +186,3 @@ async def update_queue(bot: 'MyBot', db: 'Database', player: 'MusicPlayer') -> N
 
     if not queue_message.embeds or queue_message.embeds[0].description != embed.description:
         await queue_message.edit(embed=embed)
-
-async def _get_recommendations(track: Track, player: 'MusicPlayer') -> Playlist:
-    uri = f"https://www.youtube.com/watch?v={track.identifier}&list=RD{track.identifier}"
-    query = f"identifier={quote(uri)}"
-
-    data = await player.node.send(
-        method="GET",
-        path="loadtracks",
-        query=query,
-    )
-
-    tracks = [
-        Track(
-            track_id=track["encoded"],
-            info=track["info"],
-            track_type=TrackType(track["info"]["sourceName"]),
-        )
-        for track in data['data']['tracks'][1:]
-    ]
-
-    return Playlist(
-        playlist_info=data.get('playlistInfo', {}),
-        tracks=tracks,
-        playlist_type=PlaylistType(tracks[0].track_type.value),
-        thumbnail=tracks[0].thumbnail,
-        uri=uri,
-    )

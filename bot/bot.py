@@ -82,11 +82,10 @@ class MyBot(commands.Bot):
 
     async def do_sync(self):
         logging.info( f'Preparing for sync. [{"Development" if self.dev else "Production"}]')
-        self.tree.clear_commands(guild=None)
         if not self.dev:
             return await self.tree.sync()
-
-        self.tree.copy_global_to(guild=dev_guild)
+        
+        self.tree.clear_commands(guild=dev_guild)
         return await self.tree.sync(guild=dev_guild)
 
     async def shutdown(self):
