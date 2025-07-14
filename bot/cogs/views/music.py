@@ -6,7 +6,7 @@ from discord import Button, Interaction
 from discord.ui import View
 from pomice import Track
 from pomice.enums import LoopMode
-from bot.cogs.utils.music import MusicPlayer
+from bot.cogs.utils.music import MusicPlayer, get_duration
 
 if TYPE_CHECKING:
     from bot import MyBot
@@ -14,11 +14,9 @@ if TYPE_CHECKING:
     from bot.cogs.music import Music
 
 from bot.cogs.utils.music import (
-    default_embed, 
     disabled_buttons, 
     enabled_buttons, 
     same_vc, 
-    update_queue,
 )
 
 class MusicButtons(View):
@@ -103,17 +101,17 @@ class MusicButtons(View):
         player = cast(MusicPlayer, itr.guild.voice_client)
 
         await player.stop()
-        song: Track = player.current
+        song: Track = player.queue.get_queue()[0] if len(player.queue.get_queue()) != 0 else None
         embed = discord.Embed(
             title='⏭️ Song Skipped',
             description=f'**Next:** [{song.title}]({song.uri})' if song else 'No more songs in the queue.',
             color=discord.Color.blurple()
         )
         if song:
-            embed.add_field(name="Duration", value=player.current.length_fmt)
+            embed.add_field(name="Duration", value=get_duration(player.current.length))
         if song.requester:
             embed.add_field(name="Requested by", value=str(player.current.requester.display_name) if player.current.requester else "")
-            embed.set_image(url=player.current.thumb)
+            embed.set_image(url=player.current.thumbnail)
 
         await itr.response.send_message(embed=embed, ephemeral=True, delete_after=5)
 
@@ -157,7 +155,7 @@ class MusicButtons(View):
         reversed_songs = list(reversed(player.queue.get_queue()))
         player.queue.clear()
         player.queue.extend(reversed_songs)
-        await update_queue(bot=self.bot, db=self.db, player=player)
+        await player.update_queue(self.db)
         self.success.description = 'Queue Reversed'
         await itr.response.send_message(embed=self.success, delete_after=5, ephemeral=True)
 
@@ -175,7 +173,7 @@ class MusicButtons(View):
         if not message or not queue_message:
             return
 
-        embed, embed2 = default_embed(self.bot)
+        embed, embed2 = player._get_embed()
         disabled_buttons(self.children)
 
         await message.edit(embed=embed, view=self)
@@ -186,7 +184,7 @@ class MusicButtons(View):
         await itr.response.defer()
         player = cast(MusicPlayer, itr.guild.voice_client)
         player.queue.shuffle()
-        await update_queue(bot=self.bot, db=self.db, player=player)
+        await player.update_queue(self.db)
 
     @discord.ui.button(emoji='<:VolumeUp:1158995926938046474>', custom_id='btn-volume-up')
     async def volume_up(self, itr: Interaction, _: Button):
@@ -231,7 +229,7 @@ class MusicButtons(View):
             player.autoplay = True
 
             if player.queue.is_empty:
-                await update_queue(self.bot, self.db, player)
+                await player.update_queue(self.db)
 
             self.success.description = 'AutoPlay enabled, this feature will add songs to the queue automatically'
             await itr.response.send_message(embed=self.success, ephemeral=True, delete_after=5)
@@ -314,7 +312,7 @@ class MusicButtons(View):
             if not player.is_playing:
                 await player.play(player.queue.get())
 
-        await update_queue(bot=self.bot, db=self.db, player=player)
+        await player.update_queue(self.db)
 
         self.success.description = f'Added {len(liked_music_list)} Liked songs to the queue'
         msg = await itr.followup.send(embed=self.success, ephemeral=True)

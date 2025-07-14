@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import TypedDict
 
 import aiomysql
 
@@ -8,6 +9,17 @@ class Crosshair:
     label: str
     code: str
     image_bytes: bytes
+
+class CodeMessage(TypedDict):
+    type: str
+    title: str
+    user: str
+    runtime: str
+    memory: str
+    code: str
+    time_taken: str
+    url_slug: str
+    forum_id: int
 
 class AttrDict(dict):
 

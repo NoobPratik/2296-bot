@@ -13,33 +13,43 @@ dotenv.load_dotenv()
 dev_guild = discord.Object(id=863032719314911262)
 logger = logging.getLogger(__name__)
 
+ACTIVITY_LIST = [
+    discord.Activity(type=discord.ActivityType.playing, name='Join me for some gaming fun! 🎲'),
+    discord.Activity(type=discord.ActivityType.listening, name='Tunes 🎶'),
+    discord.Activity(type=discord.ActivityType.watching, name='your favorite anime 📺'),
+    discord.Activity(type=discord.ActivityType.listening,name='What should I do next? You decide! 🤔'),
+    discord.Activity(type=discord.ActivityType.playing, name='/games 🎮')
+]
+
+COGS = [
+    'anime',
+    'music',
+    'games',
+    'valorant',
+    'miscellaneous',
+    'help',
+    'errors',
+    'admin',
+]
+
 
 class MyBot(commands.Bot):
     def __init__(self, dev=False):
         self.db = Database()
-        self.ready = True
         self.color = 0x7F00FF
         self.dev = dev
-        self.scheduler = AsyncIOScheduler()
-        self._cogs = [
-            'anime',
-            'music',
-            'games',
-            'valorant',
-            'miscellaneous',
-            'help',
-            'errors',
-            'admin',
-        ]
 
+        self.scheduler = AsyncIOScheduler()
         self.pomice = pomice.NodePool()
+
         self.economy_enabled = False
         self.is_docker = os.getenv("IS_DOCKER", False)
-        super().__init__(command_prefix='!' if not dev else '.',intents=discord.Intents.all())
+        prefix = '.' if dev else '!'
+        super().__init__(command_prefix=prefix, intents=discord.Intents.all())
 
     async def setup_hook(self):
         logging.info("Setup Initiated.")
-        for cog in self._cogs:
+        for cog in COGS:
             await self.load_extension(f"bot.cogs.{cog}")
             logging.info(f"Loaded {cog} cog")
 
@@ -65,31 +75,39 @@ class MyBot(commands.Bot):
         port = int(os.environ["LAVALINK_PORT"])
         password = os.environ["LAVALINK_PASSWORD"]
         identifier = os.environ.get("LAVALINK_IDENTIFIER", "MAIN")
-        spotify_client_id = os.environ.get("SPOTIFY_CLIENT_ID", None)
-        spotify_client_secret = os.environ.get("SPOTIFY_CLIENT_SECRET", None)
 
         try:
             await self.pomice.create_node(
-                bot=self, host=host, 
-                port=port, password=password, 
-                identifier=identifier, 
-                spotify_client_id=spotify_client_id, 
-                spotify_client_secret=spotify_client_secret
+                bot=self, 
+                host=host, 
+                port=port, 
+                password=password, 
+                identifier=identifier,
             )
-            logger.info("Lavalink node started.")
+            logging.info("Lavalink node started successfully.")
         except Exception as e:
-            logger.error(f"Failed to start Lavalink node: {e}")
+            logging.error(f"Failed to start Lavalink node: {e}")
 
-    async def do_sync(self):
-        logging.info( f'Preparing for sync. [{"Development" if self.dev else "Production"}]')
+    async def do_sync(self) -> None:
+        mode = "Development" if self.dev else "Production"
+        logging.info(f"Preparing for sync. [{mode}]")
+
         if not self.dev:
             return await self.tree.sync()
-        
+
+        dev_guild_id = int(os.getenv("DEV_GUILD_ID", 863032719314911262))
+        dev_guild = discord.Object(id=dev_guild_id)
         self.tree.clear_commands(guild=dev_guild)
         return await self.tree.sync(guild=dev_guild)
 
-    async def shutdown(self):
+    async def shutdown(self) -> None:
         logging.info("Shutting down.")
+        try:
+            self.scheduler.shutdown(wait=False)
+            await self.pomice.cleanup()
+            await self.db.close()
+        except Exception as e:
+            logger.error(f"Error during shutdown: {e}")
         await super().close()
 
     async def close(self):
@@ -100,33 +118,21 @@ class MyBot(commands.Bot):
         logging.info("bot connected.")
 
     async def on_ready(self):
-        self.ready = True
         await self.start_nodes()
         logging.info("READY.")
         self.change_status.start()
 
     @tasks.loop(seconds=15)
     async def change_status(self):
-        activity_list = [discord.Activity(type=discord.ActivityType.playing, name='Join me for some gaming fun! 🎲'),
-                         discord.Activity(
-                             type=discord.ActivityType.listening, name='Tunes 🎶'),
-                         discord.Activity(
-                             type=discord.ActivityType.watching, name='your favorite anime 📺'),
-                         discord.Activity(type=discord.ActivityType.listening,
-                                          name='What should I do next? You decide! 🤔'),
-                         discord.Activity(type=discord.ActivityType.playing, name='/games 🎮')]
-        activity = random.choice(activity_list)
+
+        activity = random.choice(ACTIVITY_LIST)
         await self.change_presence(activity=activity)
 
     async def process_commands(self, message):
         ctx = await self.get_context(message, cls=Context)
 
         if ctx.command is not None and ctx.guild is not None:
-            if not self.ready:
-                await ctx.send("I'm not ready to receive commands. Please wait a few seconds.")
-
-            else:
-                await self.invoke(ctx)
+            await self.invoke(ctx)
 
     @property
     def config(self):

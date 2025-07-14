@@ -3,16 +3,14 @@ from typing import cast
 import discord
 from discord import app_commands
 from discord.ext import commands
-from pomice import Player, SearchType, Track
+from pomice import SearchType, Track
 import pomice
 from typing import TYPE_CHECKING
 from bot.cogs.utils.music import (
     MusicPlayer,
-    default_embed, 
+    default_embed,
     disabled_buttons, 
-    now_playing,
     reset_embeds, 
-    update_queue,
 )
 from bot.cogs.views.music import MusicButtons
 
@@ -91,8 +89,8 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
             )
 
     @commands.Cog.listener()
-    async def on_pomice_track_start(self, player: Player, _: Track):
-        await now_playing(self, player)
+    async def on_pomice_track_start(self, player: MusicPlayer, _: Track):
+        await player.now_playing(self.db, self.view)
 
     @commands.Cog.listener()
     async def on_pomice_track_end(self, player: MusicPlayer, old_track: Track, _: str):
@@ -107,7 +105,7 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
         except pomice.exceptions.QueueEmpty:
             return await reset_embeds(self, player)
                     
-        await update_queue(self.bot, self.db, player)
+        await player.update_queue(self.db)
         return await player.play(next_track)
 
     @commands.Cog.listener()
@@ -167,9 +165,10 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
             player.queue.put(track)
 
         if not player.is_playing:
-            await player.play(player.queue.get())
+            song = player.queue.get()
+            await player.play(song)
 
-        await update_queue(bot=self.bot, db=self.db, player=player)
+        await player.update_queue(self.db)
         await message.delete()
 
     @commands.Cog.listener()
@@ -203,7 +202,7 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
         if member.id == self.bot.user.id:
             if before.channel and not after.channel:
                 if player:
-                    await reset_embeds(self, player)
+                    await reset_embeds(player, self.db, self.view)
                 return
 
         if not player or not player.channel:
@@ -219,7 +218,7 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
         if channel.id not in self.channels:
             return
 
-        await self.bot.db.execute(
+        await self.db.execute(
             "DELETE FROM music WHERE channel_id = %s AND guild_id = %s",
             channel.id, channel.guild.id
         )

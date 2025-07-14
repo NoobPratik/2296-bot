@@ -9,15 +9,6 @@ from bot.bot import MyBot
 from dotenv import load_dotenv
 load_dotenv()
 
-class RemoveNoise(logging.Filter):
-    def __init__(self):
-        super().__init__(name='discord.state')
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        if record.levelname == 'WARNING' and 'referencing an unknown' in record.msg:
-            return False
-        return True
-
 
 @contextlib.contextmanager
 def setup_logging():
@@ -27,9 +18,10 @@ def setup_logging():
         def filter(self, record: logging.LogRecord) -> bool:
             return not (record.levelname == 'WARNING' and 'referencing an unknown' in record.msg)
 
-    class SuppressWavelinkConnectionErrors(logging.Filter):
+    class SuppressGatewaySpam(logging.Filter):
         def filter(self, record: logging.LogRecord) -> bool:
-            return 'refused the network connection' not in record.getMessage()
+            msg = record.getMessage()
+            return not any(kw in msg for kw in ('Shard ID', 'WebSocket closed'))
 
     try:
         max_bytes = 8 * 1024 * 1024  # 8 MiB
@@ -49,12 +41,14 @@ def setup_logging():
         console_handler.setFormatter(fmt)
         log.addHandler(console_handler)
 
-        logging.getLogger('discord').setLevel(logging.INFO)
+        logging.getLogger('discord').setLevel(logging.WARNING)
+        logging.getLogger('discord.gateway').setLevel(logging.ERROR)
+        logging.getLogger('discord.gateway').addFilter(SuppressGatewaySpam())
+        logging.getLogger('discord.client').setLevel(logging.ERROR)
         logging.getLogger('discord.http').setLevel(logging.WARNING)
         logging.getLogger('discord.state').addFilter(RemoveNoise())
 
-        logging.getLogger('wavelink.websocket').addFilter(SuppressWavelinkConnectionErrors())
-
+        logging.getLogger('apscheduler').setLevel(logging.WARNING)
         yield
 
     finally:
