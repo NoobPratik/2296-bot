@@ -106,6 +106,9 @@ class Valorant(commands.GroupCog, name='valorant', description='Valorant stat tr
         for match in match_history['data']:
 
             match_data = get_match_data(match, puuid)
+            if not match_data:
+                continue
+
             embed = build_match_embed(match_data, card_icon)
             embeds.append(embed)
 

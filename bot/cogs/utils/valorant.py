@@ -108,13 +108,17 @@ def _get_datetime_footer(match_data: dict) -> str:
     return f"Played on {date_str} ({duration_str})\nMap: {_map} | Mode: {mode}"
 
 
-def get_match_data(match: dict, puuid: str) -> dict:
+def get_match_data(match: dict, puuid: str) -> dict | None:
+    if not match['is_available']:
+        return None
+    
     metadata = match.get('metadata', {})
     all_players = match.get('players', {}).get('all_players', [])
+    player_index = {p['puuid']: p for p in all_players}
+    player = player_index.get(puuid)
 
-    player = next((p for p in all_players if p['puuid'] == puuid), None)
     if not player:
-        raise ValueError("Player not found in match")
+        return None
 
     player_team = player.get('team')
     red_team = [p for p in all_players if p.get('team') == 'Red']
