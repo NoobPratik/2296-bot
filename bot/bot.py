@@ -30,6 +30,7 @@ COGS = [
     'help',
     'errors',
     'admin',
+    'server'
 ]
 
 

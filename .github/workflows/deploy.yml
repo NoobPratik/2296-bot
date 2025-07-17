@@ -1,0 +1,52 @@
+name: Rebuild and Restart Bot on Pi
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Restart Docker Bot
+        run: |
+          cd ~/Desktop/2296-bot-docker
+          docker compose down
+          docker system prune -af
+          docker compose build --no-cache
+          docker compose up -d
+
+      - name: Send Discord Embed
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          CHANNEL_ID: 1395427387646414878
+          GUILD_ID: 918136069747277834
+        run: |
+          pip install requests
+          python3 <<EOF
+          import requests
+          import os
+
+          token = os.getenv("DISCORD_TOKEN")
+          channel_id = os.getenv("CHANNEL_ID")
+          headers = {
+              "Authorization": f"Bot {token}",
+              "Content-Type": "application/json"
+          }
+
+          data = {
+              "embeds": [{
+                  "title": "✅ Bot Rebuilt & Ready",
+                  "description": "Latest commit: `${{ github.event.head_commit.message }}`",
+                  "color": 5763719
+              }]
+          }
+
+          url = f"https://discord.com/api/v10/channels/{channel_id}/messages"
+          r = requests.post(url, headers=headers, json=data)
+
+          if r.status_code >= 300:
+              print(f"Failed to send message: {r.status_code}, {r.text}")
+          else:
+              print("Discord notification sent!")
+          EOF

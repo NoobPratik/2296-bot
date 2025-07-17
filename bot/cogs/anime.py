@@ -35,6 +35,10 @@ class Anime(GroupCog, name='anime',description='Search, follow, and explore anim
 
     @commands.Cog.listener()
     async def on_ready(self):
+
+        if not self.bot.db.music:
+            return
+
         self.anime_airing_times = await anime_remainder_schedule(self.bot)
 
     @command(name='search', description='Search for anime titles and view details.')

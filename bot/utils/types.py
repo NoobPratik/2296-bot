@@ -20,6 +20,7 @@ class CodeMessage(TypedDict):
     time_taken: str
     url_slug: str
     forum_id: int
+    language: str
 
 class AttrDict(dict):
 

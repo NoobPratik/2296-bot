@@ -173,6 +173,10 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
 
     @commands.Cog.listener()
     async def on_ready(self):
+
+        if not self.db.music:
+            return
+        
         guilds = await self.db.fetchall("SELECT * FROM music WHERE message_id IS NOT NULL")
         for guild in guilds:
             channel = self.bot.get_channel(guild['channel_id'])
