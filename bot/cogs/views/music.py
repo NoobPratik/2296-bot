@@ -105,13 +105,13 @@ class MusicButtons(View):
         embed = discord.Embed(
             title='⏭️ Song Skipped',
             description=f'**Next:** [{song.title}]({song.uri})' if song else 'No more songs in the queue.',
-            color=discord.Color.blurple()
+            color=self.bot.color
         )
         if song:
-            embed.add_field(name="Duration", value=get_duration(player.current.length))
+            embed.add_field(name="Duration", value=get_duration(song.length))
         if song.requester:
-            embed.add_field(name="Requested by", value=str(player.current.requester.display_name) if player.current.requester else "")
-            embed.set_image(url=player.current.thumbnail)
+            embed.add_field(name="Requested by", value=str(song.requester.display_name) if song.requester else "")
+            embed.set_image(url=song.thumbnail)
 
         await itr.response.send_message(embed=embed, ephemeral=True, delete_after=5)
 

@@ -1,9 +1,0 @@
-FROM python:3.13-slim
-WORKDIR /2296-bot
-
-COPY . .
-RUN pip install -r requirements.txt
-
-EXPOSE 2333
-CMD ["python", "-m", "bot.launcher", "--dev"]
-

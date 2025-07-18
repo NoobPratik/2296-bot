@@ -8,45 +8,28 @@ jobs:
   deploy:
     runs-on: self-hosted
     steps:
-      - name: Restart Docker Bot
+      - name: Pull latest code
+        run: |
+          cd ~/Desktop/2296-bot-docker/2296-bot
+          git pull origin main
+
+      - name: Restart docker
         run: |
           cd ~/Desktop/2296-bot-docker
-          docker compose down
-          docker system prune -af
-          docker compose build --no-cache
-          docker compose up -d
+          docker compose build discord-bot
+          docker compose up -d discord-bot
 
-      - name: Send Discord Embed
+      - name: Send Discord Notification
         env:
-          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
-          CHANNEL_ID: 1395427387646414878
-          GUILD_ID: 918136069747277834
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          pip install requests
-          python3 <<EOF
-          import requests
-          import os
-
-          token = os.getenv("DISCORD_TOKEN")
-          channel_id = os.getenv("CHANNEL_ID")
-          headers = {
-              "Authorization": f"Bot {token}",
-              "Content-Type": "application/json"
-          }
-
-          data = {
+          COMMIT_MSG=$(git log -1 --pretty=format:"%s")
+          curl -H "Content-Type: application/json" \
+            -X POST "$DISCORD_WEBHOOK_URL" \
+            -d '{
               "embeds": [{
-                  "title": "✅ Bot Rebuilt & Ready",
-                  "description": "Latest commit: `${{ github.event.head_commit.message }}`",
-                  "color": 5763719
+                "title": "🤖 Bot Redeployed",
+                "description": "'"$COMMIT_MSG"'",
+                "color": 3066993
               }]
-          }
-
-          url = f"https://discord.com/api/v10/channels/{channel_id}/messages"
-          r = requests.post(url, headers=headers, json=data)
-
-          if r.status_code >= 300:
-              print(f"Failed to send message: {r.status_code}, {r.text}")
-          else:
-              print("Discord notification sent!")
-          EOF
+            }'
