@@ -23,6 +23,7 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
+          cd ~/Desktop/2296-bot-docker/2296-bot
           COMMIT_MSG=$(git log -1 --pretty=format:"%s")
           curl -H "Content-Type: application/json" \
             -X POST "$DISCORD_WEBHOOK_URL" \

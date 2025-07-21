@@ -64,15 +64,15 @@ class MusicButtons(View):
     async def play_last(self, itr: Interaction, _: Button):
         await itr.response.defer()
         player = cast(MusicPlayer, itr.guild.voice_client)
-
         previous = self.parent.last_songs[-1] if self.parent.last_songs else None
+
         if not previous:
-            self.error.description = 'No previous song found'
-            msg = await itr.followup.send(embed=self.error, ephemeral=True)
-            await asyncio.sleep(5)
+            msg = await itr.followup.send(content="`Looks like there's no song played before this one.`", ephemeral=True)
+            await asyncio.sleep(10)
             return await msg.delete()
 
-        await player.play(previous)
+        player.current.info['play_last'] = True
+        await player.stop()
 
     @discord.ui.button(emoji='<:Pause:1158995866221281331>', custom_id='btn-pause')
     async def play_pause(self, itr: Interaction, btn: Button):
@@ -99,21 +99,23 @@ class MusicButtons(View):
     @discord.ui.button(emoji='<:forward2white:1158995848294838272>', custom_id='btn-play-next')
     async def play_next(self, itr: Interaction, _: Button):
         player = cast(MusicPlayer, itr.guild.voice_client)
-
+        queue = player.queue.get_queue()
+        song: Track = queue[0] if len(queue) != 0 else None
         await player.stop()
-        song: Track = player.queue.get_queue()[0] if len(player.queue.get_queue()) != 0 else None
+
         embed = discord.Embed(
             title='⏭️ Song Skipped',
             description=f'**Next:** [{song.title}]({song.uri})' if song else 'No more songs in the queue.',
             color=self.bot.color
         )
+
         if song:
             embed.add_field(name="Duration", value=get_duration(song.length))
-        if song.requester:
+        if song and song.requester:
             embed.add_field(name="Requested by", value=str(song.requester.display_name) if song.requester else "")
-            embed.set_image(url=song.thumbnail)
+            embed.set_thumbnail(url=song.thumbnail)
 
-        await itr.response.send_message(embed=embed, ephemeral=True, delete_after=5)
+        await itr.response.send_message(embed=embed, ephemeral=True, delete_after=15)
 
     @discord.ui.button(emoji='<:RepeatPlaylist:1158995882918817883>', custom_id='btn-repeat-playlist')
     async def repeat_playlist(self, itr: Interaction, _: Button):
@@ -273,7 +275,7 @@ class MusicButtons(View):
     async def lyrics(self, itr: Interaction, _: Button):
         await itr.response.defer(ephemeral=True, thinking=True)
         player = cast(MusicPlayer, itr.guild.voice_client)
-        lyrics = await player._get_lyrics()
+        lyrics = await player._get_lyrics(skip_source=False)
         if lyrics:
             message = '\n'.join(x['line'] for x in lyrics)
             await itr.followup.send(message, ephemeral=True)

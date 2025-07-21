@@ -38,6 +38,9 @@ class MusicPlayer(Player):
             print(e)
             return None
 
+        if not response:
+            return None
+
         self.last_lyrics[self.current.track_id] = response['lines']
         return response['lines']
             

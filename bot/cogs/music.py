@@ -95,13 +95,20 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
     @commands.Cog.listener()
     async def on_pomice_track_end(self, player: MusicPlayer, old_track: Track, _: str):
 
-        if not player.queue.loop_mode:
-            self.last_songs.append(old_track.identifier)
-
+        play_last = old_track.info.get('play_last', False)
+        previous = self.last_songs.pop() if len(self.last_songs) != 0 else None
         next_track = None
+
+        if play_last and previous:
+            next_track = await player.build_track(identifier=previous)
+            await player.update_queue(self.db)
+            return await player.play(next_track)
+
+        if not player.queue.loop_mode:
+            self.last_songs.append(old_track.track_id)
+
         try:
             next_track = player.queue.get()
-
         except pomice.exceptions.QueueEmpty:
             return await reset_embeds(self, player)
                     
@@ -149,6 +156,8 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
             search_type = None if is_spotify else SearchType.ytmsearch
             tracks = await player.get_tracks(message.content, search_type=search_type)
         except Exception as e:
+            tracks = None
+            await message.delete()
             print(repr(e))
 
         if not tracks:
