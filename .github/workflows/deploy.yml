@@ -24,13 +24,16 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
           cd ~/Desktop/2296-bot-docker/2296-bot
+          echo "Webhook URL is ${DISCORD_WEBHOOK_URL:0:10}..."
           COMMIT_MSG=$(git log -1 --pretty=format:"%s")
           curl -H "Content-Type: application/json" \
             -X POST "$DISCORD_WEBHOOK_URL" \
-            -d '{
-              "embeds": [{
-                "title": "🤖 Bot Redeployed",
-                "description": "'"$COMMIT_MSG"'",
-                "color": 3066993
-              }]
-            }'
+            -d @- <<EOF
+          {
+            "embeds": [{
+              "title": "🤖 Bot Redeployed",
+              "description": "$COMMIT_MSG",
+              "color": 3066993
+            }]
+          }
+          EOF

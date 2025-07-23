@@ -194,8 +194,15 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
                 return
             self.channels.append(channel.id)
 
-            message = await channel.fetch_message(guild['message_id'])
-            queue_message = await channel.fetch_message(guild['queue_id'])
+            try:
+                message = await channel.fetch_message(guild['message_id'])
+                queue_message = await channel.fetch_message(guild['queue_id'])
+                
+            except discord.errors.NotFound:
+                await self.db.execute(
+                    "DELETE FROM music WHERE channel_id = %s AND guild_id = %s",
+                    channel.id, channel.guild.id
+                )
 
             if not message or not queue_message:
                 return

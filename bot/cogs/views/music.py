@@ -1,4 +1,5 @@
 import asyncio
+from io import StringIO
 import re
 from typing import TYPE_CHECKING, cast
 import discord
@@ -276,9 +277,18 @@ class MusicButtons(View):
         await itr.response.defer(ephemeral=True, thinking=True)
         player = cast(MusicPlayer, itr.guild.voice_client)
         lyrics = await player._get_lyrics(skip_source=False)
+
         if lyrics:
             message = '\n'.join(x['line'] for x in lyrics)
-            await itr.followup.send(message, ephemeral=True)
+            if len(message) <= 2000:
+                await itr.followup.send(message, ephemeral=True)
+            else:
+                file = discord.File(fp=StringIO(message), filename="lyrics.txt")
+                await itr.followup.send(
+                    content="Lyrics were too long to display, so I've sent them as a file.",
+                    file=file,
+                    ephemeral=True
+                )
         else:
             await itr.followup.send("No lyrics found.", ephemeral=True)
 
