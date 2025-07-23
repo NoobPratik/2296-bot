@@ -84,8 +84,8 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
 
         else:
             await self.db.execute(
-                "UPDATE music SET channel_id=%s, message_id=%s, queue_id=%s",
-                channel.id, song_msg.id, queue_message.id
+                "UPDATE music SET channel_id=%s, message_id=%s, queue_id=%s WHERE guild_id = %s",
+                channel.id, song_msg.id, queue_message.id, itr.guild.id
             )
 
     @commands.Cog.listener()
