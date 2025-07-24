@@ -11,6 +11,7 @@ from bot.cogs.utils.music import (
     default_embed,
     disabled_buttons, 
     reset_embeds, 
+    get_message
 )
 from bot.cogs.views.music import MusicButtons
 
@@ -195,8 +196,10 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
             self.channels.append(channel.id)
 
             try:
-                message = await channel.fetch_message(guild['message_id'])
-                queue_message = await channel.fetch_message(guild['queue_id'])
+                message = await get_message(channel, guild['message_id'], self.db)
+                queue_message = await get_message(channel, guild['queue_id'], self.db)
+                # message = await channel.fetch_message(guild['message_id'])
+                # queue_message = await channel.fetch_message(guild['queue_id'])
                 
             except discord.errors.NotFound:
                 await self.db.execute(

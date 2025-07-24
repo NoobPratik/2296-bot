@@ -130,7 +130,8 @@ class MusicPlayer(Player):
     async def now_playing(self, db: 'Database', view) -> None:
         guild = await db.fetchone("SELECT * FROM music WHERE guild_id = %s", self.guild.id)
         channel = self.guild.get_channel(guild['channel_id'])
-        msg = await channel.fetch_message(guild['message_id'])
+        msg = await get_message(channel, guild, db)
+        # msg = await channel.fetch_message(guild['message_id'])
 
         embed, _ = self._get_embed(self.current)
         enabled_buttons(view.children)
@@ -148,7 +149,8 @@ class MusicPlayer(Player):
             return
 
         try:
-            queue_msg = await channel.fetch_message(guild_config['queue_id'])
+            queue_msg = await get_message(channel, guild_config['queue_id'], self.db)
+            # queue_msg = await channel.fetch_message(guild_config['queue_id'])
         except discord.NotFound:
             return
 
@@ -183,6 +185,18 @@ class MusicPlayer(Player):
         if not queue_msg.embeds or queue_msg.embeds[0].description != embed.description:
             await queue_msg.edit(embed=embed)
 
+async def get_message(channel: discord.TextChannel, channel_id: int, db: 'Database'):
+    try:
+        msg = await channel.fetch_message(channel_id)
+        return msg
+    except discord.NotFound:
+        await db.execute(
+            "DELETE FROM music WHERE channel_id = %s AND guild_id = %s",
+            channel.id, channel.guild.id
+        )
+        return
+    except discord.errors.DiscordServerError as e:
+        return None
 
 def same_vc(itr: Interaction, player: 'MusicPlayer'):
     if not itr.user.voice:
@@ -227,8 +241,10 @@ async def reset_embeds(music, player: 'MusicPlayer'):
     player.queue.clear()
 
     channel = player.guild.get_channel(guild['channel_id'])
-    message = await channel.fetch_message(guild['message_id'])
-    queue_message = await channel.fetch_message(guild['queue_id'])
+    message = await get_message(channel, guild['message_id'], music.bot.db)
+    queue_message = await get_message(channel, guild['queue_id'], music.bot.db)
+    # message = await channel.fetch_message(guild['message_id'])
+    # queue_message = await channel.fetch_message(guild['queue_id'])
 
     embed, embed2 = default_embed(music.view.bot)
 

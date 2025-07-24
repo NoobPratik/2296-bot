@@ -7,7 +7,7 @@ from discord import Button, Interaction
 from discord.ui import View
 from pomice import Track
 from pomice.enums import LoopMode
-from bot.cogs.utils.music import MusicPlayer, get_duration
+from bot.cogs.utils.music import MusicPlayer, get_duration, get_message
 
 if TYPE_CHECKING:
     from bot import MyBot
@@ -170,8 +170,10 @@ class MusicButtons(View):
         player.queue.clear()
 
         guild = await self.db.fetchone("SELECT * FROM music WHERE guild_id = %s", itr.guild.id)
-        message = await itr.channel.fetch_message(guild['message_id'])
-        queue_message = await itr.channel.fetch_message(guild['queue_id'])
+        message = await get_message(itr.channel, guild['message_id'], self.db)
+        queue_message = await get_message(itr.channel, guild['queue_id'], self.db)
+        # message = await itr.channel.fetch_message(guild['message_id'])
+        # queue_message = await itr.channel.fetch_message(guild['queue_id'])
 
         if not message or not queue_message:
             return

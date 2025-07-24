@@ -13,8 +13,9 @@ log = logging.getLogger(__name__)
 class Database(object):
     """ Main class for database connection """
 
-    def __init__(self):
+    def __init__(self, dev):
         self.music = None
+        self.dev = dev
 
     async def db_get_pools(self) -> None:
         try:
@@ -38,7 +39,7 @@ class Database(object):
         host = os.getenv("MYSQL_HOST", "localhost") if not is_docker else "mysql"
         user = os.getenv("MYSQL_USER", "root")
         password = os.getenv("MYSQL_PASSWORD", os.getenv("MYSQL_ROOT_PASSWORD"))
-        db = os.getenv("MYSQL_DATABASE", "main")
+        db = os.getenv("MYSQL_DATABASE", "main") if not self.dev else "dev"
         port = int(os.getenv("MYSQL_PORT", 3306))
 
         return await aiomysql.create_pool(

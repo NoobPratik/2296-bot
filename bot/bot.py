@@ -36,7 +36,7 @@ COGS = [
 
 class MyBot(commands.Bot):
     def __init__(self, dev=False):
-        self.db = Database()
+        self.db = Database(dev)
         self.color = 0x7F00FF
         self.dev = dev
 
