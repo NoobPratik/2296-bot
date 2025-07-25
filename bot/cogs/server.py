@@ -21,7 +21,7 @@ class LeetCode:
         self.language_prefix = {'python': 'py'}
 
     async def find_forum_thread(self):
-        forum = await self.bot.fetch_channel(self.data['forum_id'])
+        forum = await self.bot.fetch_channel(int(self.data['forum_id']))
         if not isinstance(forum, discord.ForumChannel):
             return None, None
 
@@ -39,7 +39,7 @@ class LeetCode:
     
     async def send_leetcode_embed(self, data: CodeMessage, thread: Optional[int], forum: discord.channel.ForumChannel):
 
-        if not thread and forum:
+        if not thread and not forum:
             return {'status': 'error', 'status_code': 400, 'error': 'provided forum id is invalid'}
 
         if not thread:
@@ -102,7 +102,7 @@ class ActiveUsers:
 
 
 class SocketServerCog(commands.Cog):
-    def __init__(self, bot: 'MyBot', ip:str = '0.0.0.0', port:int = 6969):
+    def __init__(self, bot: 'MyBot', ip:str = '0.0.0.0', port:int = 8001):
         self.bot = bot
         self.logger = logging.getLogger("SocketServer")
         self.app = web.Application()
@@ -195,4 +195,5 @@ class SocketServerCog(commands.Cog):
         
 
 async def setup(bot):
-    await bot.add_cog(SocketServerCog(bot))
+    ip = '::' if bot.is_docker else '0.0.0.0'
+    await bot.add_cog(SocketServerCog(bot, ip=ip))
