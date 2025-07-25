@@ -14,14 +14,12 @@ class CodeMessage(TypedDict):
     type: str
     title: str
     user: str
-    runtime: str
-    memory: str
     code: str
     time_taken: str
     url_slug: str
-    forum_id: int
+    forum_id: str
     language: str
-
+    
 class AttrDict(dict):
 
     def __getattr__(self, item):

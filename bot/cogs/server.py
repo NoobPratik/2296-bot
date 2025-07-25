@@ -1,7 +1,9 @@
 from collections import defaultdict
+import io
 import os
 import logging
 from time import time
+import traceback
 from typing import TYPE_CHECKING, Optional
 
 from aiohttp import web
@@ -18,7 +20,18 @@ class LeetCode:
     def __init__(self, bot: 'MyBot', data: CodeMessage):
         self.bot = bot
         self.data = data
-        self.language_prefix = {'python': 'py'}
+        self.language_prefix = {
+            'C++': '.cpp',
+            'Java': '.java',
+            'Python': '.py',
+            'Python3': '.py', 
+            'JavaScript': '.js',
+            'TypeScript': '.ts',
+            'C': '.c',
+            'C#': '.cs',
+            'Go': '.go',
+            'Rust': '.rs'
+        }
 
     async def find_forum_thread(self):
         forum = await self.bot.fetch_channel(int(self.data['forum_id']))
@@ -42,23 +55,31 @@ class LeetCode:
         if not thread and not forum:
             return {'status': 'error', 'status_code': 400, 'error': 'provided forum id is invalid'}
 
-        if not thread:
-            thread = await forum.create_thread(name=data["title"], content=content, embed=embed)
+        language_ext = self.language_prefix[data['language']].lstrip('.')
+        filename = f"{data['url_slug']}.{language_ext}"
 
-        embed = discord.Embed(
-            title=f"Code by {data.get('user', 'unknown')}",
-            description=f"```{self.language_prefix[data.get('language')]}\n{data.get('code', '')}```",
-            color=self.bot.color
+        code_file = discord.File(
+            io.StringIO(data['code']),
+            filename=filename
         )
-        embed.set_footer(text=f"Runtime: {data.get('runtime')}, Memory: {data.get('memory')}, Time taken: {data.get('time_taken')}")
-        content = f"<https://leetcode.com/problems/{data.get('url_slug', 'unknown')}>"
+
+        content = f"<https://leetcode.com/problems/{data['url_slug']}>\n" \
+                  f"Code by {data['user']} — Time taken: {data.get('time_taken')}"
+
+        if not thread:
+            thread = await forum.create_thread(
+                name=data["title"],
+                content=content,
+                files=[code_file]
+            )
+            return {'status': 'success', 'status_code': 200}
 
         try:
-            await thread.send(content=content, embed=embed)
+            await thread.send(content=content, file=code_file)
             return {'status': 'success', 'status_code': 200}
-        
+
         except Exception as e:
-            return {'status': 'error', 'status_code': 400, 'error': e}
+            return {'status': 'error', 'status_code': 400, 'error': str(e)}
         
 
 class ActiveUsers:
@@ -147,6 +168,7 @@ class SocketServerCog(commands.Cog):
 
         except Exception as e:
             self.logger.error(f"Error in /submit: {e}")
+            self.logger.debug(traceback.format_exc())
             return web.json_response({"error": str(e)}, status=500)
 
     async def route_user_login(self, request: web.Request):
