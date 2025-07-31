@@ -96,7 +96,7 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
     @commands.Cog.listener()
     async def on_pomice_track_end(self, player: MusicPlayer, old_track: Track, _: str):
 
-        play_last = old_track.info.get('play_last', False)
+        play_last = old_track.info.get('play_last', False) if old_track else None
         previous = self.last_songs.pop() if len(self.last_songs) != 0 else None
         next_track = None
 

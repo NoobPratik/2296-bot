@@ -2,6 +2,7 @@ from datetime import datetime
 from io import BytesIO
 import logging
 from zoneinfo import ZoneInfo
+import aiohttp
 from discord import Embed
 import requests
 from PIL import Image
@@ -178,7 +179,15 @@ async def add_default_crosshair(db, user_id, api) -> None:
     """
     Adds a default crosshair when user doesn't have any crosshairs in database
     """
-    background_bytes = requests.get("https://www.vcrdb.net/img/bgs/default.webp").content
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get("https://www.vcrdb.net/img/bgs/default.webp") as resp:
+                if resp.status != 200:
+                    raise Exception("Failed to fetch background image in crosshair")
+                background_bytes = await resp.read()
+    except Exception as e:
+        print(f"Error fetching background image: {e}")
+        
     crosshair_bytes = await api.get_crosshair_from_code("0;P;h;0;f;0;0l;4;0o;2;0a;1;0f;0;1b;0")
 
     crosshair_image = combine_images(background_bytes, crosshair_bytes)
