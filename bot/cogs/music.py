@@ -183,40 +183,43 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
 
     @commands.Cog.listener()
     async def on_ready(self):
-
         if not self.db.music:
             return
-        
-        guilds = await self.db.fetchall("SELECT * FROM music WHERE message_id IS NOT NULL")
-        for guild in guilds:
-            channel = self.bot.get_channel(guild['channel_id'])
 
-            if not channel:
-                return
-            self.channels.append(channel.id)
+        for guild in self.bot.guilds:
+            for channel in guild.text_channels:
+                if "2296-song-request" in channel.name.lower():
+                    exists = await self.db.fetchone("SELECT * FROM music WHERE guild_id = %s", guild.id)
+                    if exists:
+                        self.channels.append(channel.id)
+                        continue
 
-            try:
-                message = await get_message(channel, guild['message_id'], self.db)
-                queue_message = await get_message(channel, guild['queue_id'], self.db)
-                # message = await channel.fetch_message(guild['message_id'])
-                # queue_message = await channel.fetch_message(guild['queue_id'])
-                
-            except discord.errors.NotFound:
-                await self.db.execute(
-                    "DELETE FROM music WHERE channel_id = %s AND guild_id = %s",
-                    channel.id, channel.guild.id
-                )
+                    try:
+                        messages = [msg async for msg in channel.history() if msg.author == self.bot.user]
+                    except Exception as e:
+                        continue
 
-            if not message or not queue_message:
-                return
+                    if len(messages) < 2:
+                        continue
 
-            embed, embed2 = default_embed(self.bot)
-            disabled_buttons(self.view.children)
+                    song_msg = messages[0]
+                    queue_msg = messages[1]
 
-            if message.embeds and message.embeds[0].description != embed.description:
-                await message.edit(embed=embed, view=self.view)
-            if queue_message.embeds and queue_message.embeds[0].description != embed2.description:
-                await queue_message.edit(embed=embed2)
+                    embed, embed2 = default_embed(self.bot)
+                    disabled_buttons(self.view.children)
+
+                    try:
+                        await song_msg.edit(embed=embed, view=self.view)
+                        await queue_msg.edit(embed=embed2)
+                    except Exception as e:
+                        print(f"Failed to edit recovered messages: {e}")
+                        continue
+
+                    await self.db.execute(
+                        "INSERT INTO music (guild_id, channel_id, message_id, queue_id) VALUES (%s, %s, %s, %s)",
+                        guild.id, channel.id, song_msg.id, queue_msg.id
+                    )
+                    self.channels.append(channel.id)
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before, after):

@@ -130,7 +130,7 @@ class MusicPlayer(Player):
     async def now_playing(self, db: 'Database', view) -> None:
         guild = await db.fetchone("SELECT * FROM music WHERE guild_id = %s", self.guild.id)
         channel = self.guild.get_channel(guild['channel_id'])
-        msg = await get_message(channel, guild['channel_id'], db)
+        msg = await get_message(channel, guild['message_id'], db)
         # msg = await channel.fetch_message(guild['message_id'])
 
         embed, _ = self._get_embed(self.current)
@@ -185,9 +185,9 @@ class MusicPlayer(Player):
         if not queue_msg.embeds or queue_msg.embeds[0].description != embed.description:
             await queue_msg.edit(embed=embed)
 
-async def get_message(channel: discord.TextChannel, channel_id: int, db: 'Database'):
+async def get_message(channel: discord.TextChannel, message_id: int, db: 'Database'):
     try:
-        msg = await channel.fetch_message(channel_id)
+        msg = await channel.fetch_message(message_id)
         return msg
     except discord.NotFound:
         await db.execute(

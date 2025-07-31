@@ -10,21 +10,21 @@ jobs:
     steps:
       - name: Pull latest code
         run: |
-          cd ~/Desktop/2296-bot-docker/2296-bot
+          cd ~/docker/discord/2296-bot
           git pull origin main
 
       - name: Restart docker
         run: |
-          cd ~/Desktop/2296-bot-docker
-          docker compose build discord-bot
-          docker compose up -d discord-bot
+          cd ~/docker/discord/2296-bot
+          docker compose build bot
+          docker compose up -d bot
 
       - name: Send Discord Notification
         env:
           # DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           DISCORD_WEBHOOK_URL: https://discord.com/api/webhooks/1395473639910150297/PNLiQaVuorHnxzdaRlZPKsuDxR3V8bM7gTi6XzaEU9BC-fhIx1Sx6QylacZjB_t5LJGe
         run: |
-          cd ~/Desktop/2296-bot-docker/2296-bot
+          cd ~/docker/discord/2296-bot
           echo "Webhook URL is ${DISCORD_WEBHOOK_URL:0:10}..."
           COMMIT_MSG=$(git log -1 --pretty=format:"%s")
           curl -H "Content-Type: application/json" \
