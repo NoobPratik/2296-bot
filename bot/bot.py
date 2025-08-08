@@ -86,8 +86,10 @@ class MyBot(commands.Bot):
                 identifier=identifier,
             )
             logging.info("Lavalink node started successfully.")
+            return True
         except Exception as e:
             logging.error(f"Failed to start Lavalink node: {e}")
+            return False
 
     async def do_sync(self) -> None:
         mode = "Development" if self.dev else "Production"

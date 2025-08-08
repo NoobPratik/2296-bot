@@ -106,7 +106,7 @@ class Music(commands.Cog, name='music', description='Play, Skip, Seek and more u
             return await player.play(next_track)
 
         if not player.queue.loop_mode:
-            self.last_songs.append(old_track.track_id)
+            self.last_songs.append(old_track.track_id) if old_track else None
 
         try:
             next_track = player.queue.get()

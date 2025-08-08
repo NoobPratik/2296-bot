@@ -1,10 +1,12 @@
-import discord
 from discord.ext import commands
-from discord import app_commands, Object
-from typing import Literal, Optional
+from discord import Object, Embed, Color
+from typing import Literal, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from bot import MyBot
 
 class Admin(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: 'MyBot'):
         self.bot = bot
 
     @commands.command(name="sync")
@@ -70,6 +72,27 @@ class Admin(commands.Cog):
 
         synced = await self.bot.tree.sync()
         await ctx.send(f"Resynced {len(synced)} global command(s).")
+
+    @commands.command(name='start_nodes')
+    @commands.guild_only()
+    @commands.is_owner()
+    async def start_nodes(self, ctx):
+        started = await self.start_nodes()
+
+        if started:
+            embed = Embed(
+                title="✅ Lavalink Node Started",
+                description="The Lavalink node has been started successfully.",
+                color=Color.green()
+            )
+        else:
+            embed = Embed(
+                title="❌ Failed to Start Lavalink Node",
+                description="There was an error starting the Lavalink node. Check logs for more details.",
+                color=Color.red()
+            )
+
+        await ctx.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Admin(bot))

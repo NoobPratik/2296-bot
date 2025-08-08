@@ -49,6 +49,8 @@ def setup_logging():
         logging.getLogger('discord.state').addFilter(RemoveNoise())
 
         logging.getLogger('apscheduler').setLevel(logging.WARNING)
+        logging.getLogger('aiohttp.access').setLevel(logging.ERROR)
+
         yield
 
     finally:

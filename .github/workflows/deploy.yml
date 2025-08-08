@@ -7,34 +7,58 @@ on:
 jobs:
   deploy:
     runs-on: self-hosted
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+    defaults:
+      run:
+        working-directory: ~/docker/discord
+
     steps:
       - name: Pull latest code
         run: |
-          cd ~/docker/discord/2296-bot
+          cd 2296-bot
           git pull origin main
 
-      - name: Restart docker
+      - name: Restart bot container
         run: |
-          cd ~/docker/discord/2296-bot
           docker compose build bot
           docker compose up -d bot
 
       - name: Send Discord Notification
-        env:
-          # DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          DISCORD_WEBHOOK_URL: https://discord.com/api/webhooks/1395473639910150297/PNLiQaVuorHnxzdaRlZPKsuDxR3V8bM7gTi6XzaEU9BC-fhIx1Sx6QylacZjB_t5LJGe
         run: |
-          cd ~/docker/discord/2296-bot
-          echo "Webhook URL is ${DISCORD_WEBHOOK_URL:0:10}..."
+          cd 2296-bot
           COMMIT_MSG=$(git log -1 --pretty=format:"%s")
+          COMMIT_AUTHOR=$(git log -1 --pretty=format:"%an")
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
           curl -H "Content-Type: application/json" \
             -X POST "$DISCORD_WEBHOOK_URL" \
             -d @- <<EOF
           {
             "embeds": [{
-              "title": "🤖 Bot Redeployed",
-              "description": "$COMMIT_MSG",
-              "color": 3066993
+              "title": "Bot has been restarted",
+              "color": 3066993,
+              "fields": [
+                {
+                  "name": "Repository",
+                  "value": "2296-bot"
+                },
+                {
+                  "name": "Commit",
+                  "value": "\`$COMMIT_HASH\` - $COMMIT_MSG"
+                },
+                {
+                  "name": "Author",
+                  "value": "$COMMIT_AUTHOR",
+                  "inline": true
+                },
+                {
+                  "name": "Deployed At",
+                  "value": "$TIMESTAMP",
+                  "inline": true
+                }
+              ]
             }]
           }
           EOF

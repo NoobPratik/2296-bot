@@ -1,7 +1,8 @@
 from dataclasses import dataclass
-from typing import TypedDict
+from typing import Optional, TypedDict
 
 import aiomysql
+from pydantic import BaseModel
 
 
 @dataclass
@@ -10,15 +11,16 @@ class Crosshair:
     code: str
     image_bytes: bytes
 
-class CodeMessage(TypedDict):
-    type: str
+class CodeMessage(BaseModel):
     title: str
-    user: str
     code: str
-    time_taken: str
+    language: str
     url_slug: str
     forum_id: str
-    language: str
+    difficulty: Optional[str] = "Unknown"
+    time_taken: Optional[str] = "N/A"
+    user: Optional[str] = "Anonymous"
+    type: Optional[str] = "DISCORD_FORUM"
     
 class AttrDict(dict):
 
