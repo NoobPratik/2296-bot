@@ -60,12 +60,10 @@ class LeetCodeService:
         )
         embed.set_author(name=f"Code by {data.user}")
         embed.set_footer(text="LeetCode submission")
-        embed.add_field(name="Problem URL", value=f"[{data.url_slug}]({url})", inline=False)
 
         if not thread:
             thread = await forum.create_thread(
                 name=data.title,
-                content=f"Problem: <{url}>",
                 embed=embed,
                 files=[file]
             )
@@ -106,7 +104,7 @@ class ActiveUsers:
             "question": None,
             "started_at": None,
             "solved_today": 0,
-            "last_active": time.time()
+            "last_active": time()
         })
         user["solved_today"] += 1
 

@@ -77,7 +77,7 @@ class Admin(commands.Cog):
     @commands.guild_only()
     @commands.is_owner()
     async def start_nodes(self, ctx):
-        started = await self.start_nodes()
+        started = await self.bot.start_nodes()
 
         if started:
             embed = Embed(
