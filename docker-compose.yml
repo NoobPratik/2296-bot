@@ -50,7 +50,7 @@ services:
       - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
       - SPDC=${SPDC}
     volumes:
-      - ./config/application.yml:/opt/Lavalink/application.yml
+      - /home/pratik2296/docker/discord/2296-bot/config/application.yml:/opt/Lavalink/application.yml
     restart: unless-stopped
     healthcheck:
       test:
