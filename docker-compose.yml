@@ -6,6 +6,30 @@ services:
     command: python3 -m bot.launcher
     environment:
       - IS_DOCKER=true
+      - DISCORD_DEV=${DISCORD_DEV}
+      - DISCORD_MAIN=${DISCORD_MAIN}
+      - DISCORD_ERRORS_WEBHOOK_ID=${DISCORD_ERRORS_WEBHOOK_ID}
+      - DISCORD_ERRORS_WEBHOOK_TOKEN=${DISCORD_ERRORS_WEBHOOK_TOKEN}
+      - COMMAND_PREFIX=${COMMAND_PREFIX}
+      - FORUM_CHANNEL_ID=${FORUM_CHANNEL_ID}
+      - LAVALINK_HOST=${LAVALINK_HOST}
+      - LAVALINK_PORT=${LAVALINK_PORT}
+      - LAVALINK_PASSWORD=${LAVALINK_PASSWORD}
+      - LAVALINK_IDENTIFIER=${LAVALINK_IDENTIFIER}
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - API_KEY=${API_KEY}
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYANIMELIST_API_KEY=${MYANIMELIST_API_KEY}
+      - ANILIST_API_ID=${ANILIST_API_ID}
+      - ANILIST_API_SECRET=${ANILIST_API_SECRET}
+      - VALORANT_API_KEY=${VALORANT_API_KEY}
+      - VALORANT_TRACKER_KEY=${VALORANT_TRACKER_KEY}
     depends_on:
       lavalink:
         condition: service_healthy
@@ -21,6 +45,10 @@ services:
     environment:
       - _JAVA_OPTIONS=-Xmx2G
       - SERVER_PORT=2333
+      - LAVALINK_PASSWORD=${LAVALINK_PASSWORD}
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - SPDC=${SPDC}
     volumes:
       - ./config/application.yml:/opt/Lavalink/application.yml
     restart: unless-stopped
@@ -43,6 +71,11 @@ services:
       - mysql-data:/var/lib/mysql
       - ./config/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
