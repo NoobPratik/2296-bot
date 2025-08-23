@@ -1,0 +1,76 @@
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python3 -m bot.launcher
+    env_file:
+      - stack.env
+    environment:
+      - IS_DOCKER=true
+    depends_on:
+      lavalink:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - proxy_net
+      - discord_net
+
+  lavalink:
+    image: fredboat/lavalink:latest
+    environment:
+      - _JAVA_OPTIONS=-Xmx2G
+      - SERVER_PORT=2333
+    volumes:
+      - ./config/application.yml:/opt/Lavalink/application.yml
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "-H",
+          "Authorization: youshallnotpass",
+          "http://lavalink:2333/version",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    networks:
+      - discord_net
+
+  mysql:
+    image: mysql:8.0
+    env_file:
+      - stack.env
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./config/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - discord_net
+
+  spotify-tokener:
+    image: ghcr.io/topi314/spotify-tokener:master
+    restart: unless-stopped
+    networks:
+      - discord_net
+
+volumes:
+  mysql-data:
+
+networks:
+  proxy_net:
+    external: true
+  discord_net:
+    name: discord_net

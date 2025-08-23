@@ -7,9 +7,8 @@ __pycache__/
 .vscode
 # Environments
 .env
-
-bot/cogs/archived
-bot/utils/application.yml
+stack.env
+config/application.yml
 
 /.idea
 
