@@ -56,7 +56,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'curl -f -H "Authorization: $${LAVALINK_PASSWORD}" http://localhost:2333/version',
+          'curl -f -H "Authorization: ${LAVALINK_PASSWORD}" http://localhost:2333/version',
         ]
       interval: 10s
       timeout: 5s
