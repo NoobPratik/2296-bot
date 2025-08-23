@@ -26,16 +26,12 @@ services:
     volumes:
       - ./config/application.yml:/opt/Lavalink/application.yml
     restart: unless-stopped
+    env_file:
+      - stack.env
     healthcheck:
-      test:
-        [
-          "CMD",
-          "curl",
-          "-f",
-          "-H",
-          "Authorization: youshallnotpass",
-          "http://lavalink:2333/version",
-        ]
+      test: >
+        CMD-SHELL
+        curl -f -H "Authorization: ${LAVALINK_PASSWORD}" http://lavalink:2333/version
       interval: 10s
       timeout: 5s
       retries: 10

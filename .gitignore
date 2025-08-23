@@ -8,7 +8,6 @@ __pycache__/
 # Environments
 .env
 stack.env
-config/application.yml
 
 /.idea
 

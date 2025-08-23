@@ -3,4 +3,3 @@ __pycache__/
 .env
 logs/
 stack.env
-config/
