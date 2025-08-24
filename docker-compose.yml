@@ -39,6 +39,12 @@ services:
     networks:
       - proxy_net
       - discord_net
+    labels:
+      glance.id: discord
+      glance.name: Discord
+      glance.icon: si:discord
+      glance.description: Personal discord bot
+      glance.hide: false
 
   lavalink:
     image: fredboat/lavalink:latest
@@ -64,6 +70,10 @@ services:
       start_period: 30s
     networks:
       - discord_net
+    labels:
+      glance.parent: discord
+      glance.name: Lavalink
+      glance.hide: false
 
   mysql:
     image: mysql:8.0
@@ -84,12 +94,20 @@ services:
       start_period: 20s
     networks:
       - discord_net
+    labels:
+      glance.parent: discord
+      glance.name: Database
+      glance.hide: false
 
   spotify-tokener:
     image: ghcr.io/topi314/spotify-tokener:master
     restart: unless-stopped
     networks:
       - discord_net
+    labels:
+      glance.parent: discord
+      glance.name: Spotify tokener
+      glance.hide: false
 
 volumes:
   mysql-data:
